@@ -1,0 +1,41 @@
+Today's plan
+1: update -- finish
+2: stl scaling problem -- from stl to vertices -- finished with MATLAB and python
+3. camera view -- finished
+4. spot size -- finished
+4.1 Double window -- finished
+5. scanning path integration -- finished
+6. Registration integration -- pending
+7. Github -- pending
+8. TumorRegion exp -- finished
+8. blood vessel -- later
+
+This doc is used for the code structure
+Goals:
+1. Multiple testing cases (pcl, vtk, opencv)
+2. The 3D visualization system
+3. The 3D sample case
+
+Class structure:
+1. sec_viz: input: different format; output: vtk_pc format
+2. sec_map: 3D random registration
+3. sec_pre: input: original data; output: stl, ply, txt, stl etc
+4. pcl_test:
+5. vtk_test:
+6. opencv_test:
+
+sec_pre: data preprocessing tools
+1. format change (file to vtk) -- data format
+    The for loop: txt, ply, stl
+
+sec_viz: visualization platform
+1. def init: output vtk data
+2. def scene: generate the background scene
+3. def interactive: move a point and viz in the scene
+4. def automatic: automatic scene for the 3D model
+
+sec_map: registration
+1. scan image
+2. brain image
+3. Coarse alignment
+4. Fine alignment
