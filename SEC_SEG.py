@@ -9,9 +9,28 @@
 # Problem definition 5: A clear boundary
 # Problem definition 6: The contour is always a rectangular (or a fixed shape)
 
+# ref1: Multiple images in one window
+# http://answers.opencv.org/question/175912/how-to-display-multiple-images-in-one-window/
+# ref2: Writing video with multiple windows
+# https://www.pyimagesearch.com/2016/02/22/writing-to-video-with-opencv/
+# ref3: Mask
+# https://mmeysenburg.github.io/image-processing/03-drawing-bitwise/
+# ref4: Realtime color detection
+# https://www.pyimagesearch.com/2014/08/04/opencv-python-color-detection/
+# ref5: computer vision and image processing expert
+# https://www.pyimagesearch.com/pyimagesearch-gurus/
+
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
+import skimage
+from skimage import color
+from skimage.segmentation import slic
+from skimage.data import astronaut
+from skimage.segmentation import mark_boundaries
+from skimage.util import img_as_float
+import time
+import argparse
 
 class sec_seg:
 
@@ -67,53 +86,110 @@ class sec_seg:
 
     def ImgWaterThreshold(self):
 
-        gray = cv2.cvtColor(self.img, cv2.COLOR_RGB2GRAY)
-        ret, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV+cv2.THRESH_OTSU)
+        x, y = np.indices((80, 80))
 
-        plt.imshow(thresh, cmap = 'gray')
+        # gray = cv2.cvtColor(self.img, cv2.COLOR_RGB2GRAY)
+        # ret, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV+cv2.THRESH_OTSU)
+        #
+        # plt.imshow(thresh, cmap = 'gray')
+        #
+        # # noise removal
+        # kernel = np.ones((3,3),np.uint8)
+        # opening = cv2.morphologyEx(thresh,cv2.MORPH_OPEN,kernel, iterations = 2)
+        #
+        # # sure background area
+        # sure_bg = cv2.dilate(opening,kernel,iterations=3)
+        #
+        # # Finding sure foreground area
+        # dist_transform = cv2.distanceTransform(opening,cv2.DIST_L2,5)
+        # ret, sure_fg = cv2.threshold(dist_transform,0.7*dist_transform.max(),255,0)
+        #
+        # # Finding unknown region
+        # sure_fg = np.uint8(sure_fg)
+        # unknown = cv2.subtract(sure_bg,sure_fg)
+        #
+        # # Marker labelling
+        # ret, markers = cv2.connectedComponents(sure_fg)
+        #
+        # # Add one to all labels so that sure background is not 0, but 1
+        # markers = markers + 1
+        #
+        # # Now, mark the region of unknown with zero
+        # markers[unknown==255] = 0
+        #
+        # markers = cv2.watershed(gray, markers)
+        # gray[markers == -1] = [255,0,0]
+        #
+        # plt.imshow(sure_bg, cmap = 'gray')
 
-        # noise removal
-        kernel = np.ones((3,3),np.uint8)
-        opening = cv2.morphologyEx(thresh,cv2.MORPH_OPEN,kernel, iterations = 2)
-
-        # sure background area
-        sure_bg = cv2.dilate(opening,kernel,iterations=3)
-
-        # Finding sure foreground area
-        dist_transform = cv2.distanceTransform(opening,cv2.DIST_L2,5)
-        ret, sure_fg = cv2.threshold(dist_transform,0.7*dist_transform.max(),255,0)
-
-        # Finding unknown region
-        sure_fg = np.uint8(sure_fg)
-        unknown = cv2.subtract(sure_bg,sure_fg)
-
-        # Marker labelling
-        ret, markers = cv2.connectedComponents(sure_fg)
-
-        # Add one to all labels so that sure background is not 0, but 1
-        markers = markers + 1
-
-        # Now, mark the region of unknown with zero
-        markers[unknown==255] = 0
-
-        markers = cv2.watershed(gray, markers)
-        gray[markers == -1] = [255,0,0]
-
-        plt.imshow(sure_bg, cmap = 'gray')
+    def ImgMask(self):
+        # Ref: https://stackoverflow.com/questions/25074488/how-to-mask-an-image-using-numpy-opencv
+        # Test the mask function
+        img = cv2.imread('/home/maguangshen/PycharmProjects/BTL_GS/Data/Data_img/test_1.png')
+        height, width, depth = img.shape
+        circle_img = np.zeros((height, width), np.uint8)
+        print (circle_img)
+        cv2.circle(circle_img, (width/2, height/2), 280, 1, thickness = -1)
+        print( circle_img)
+        masked_data = cv2.bitwise_and(img, img, mask = circle_img)
+        # The pixel coordinates of the
+        cv2.imshow("masked", masked_data)
+        cv2.waitKey(0)
 
     def ImgKmeanCluster(self):
-        # Kmean cluster for color image
-        # Define a rectangular region and segment the region based on the color and edge
-        # Using skimage
-        a = 1
 
+        # Ref:http://scikit-image.org/docs/0.12.x/auto_examples/segmentation/plot_segmentations.html
+        # Ref:https://github.com/jayrambhia/superpixels-SLIC/blob/master/SLICcv.py
+
+        # This method is too slow
+
+        # example from scikit image
+
+        # load image
+        img = cv2.imread('/home/maguangshen/PycharmProjects/BTL_GS/others/superpixels-SLIC/test_1.png')
+        # SLIC superpixel region segmentations
+        time_start = time.clock()
+        segments = slic(img, n_segments=2000, compactness=10, convert2lab='True')
+        # boundary visualization based on the above result
+        img_boundary = mark_boundaries(img, segments)
+        time_elapsed = (time.clock() - time_start)
+        print(time_elapsed)
+        # Convert superpixels to the cell array
+        print(segments)
+
+        plt.subplot(2, 2, 1), plt.imshow(img)
+        plt.subplot(2, 2, 2), plt.imshow(segments)
+        plt.subplot(2, 2, 3), plt.imshow(img_boundary)
+        plt.show()
+
+        # data = np.asanyarray(segments)
+        # np.save('npydata' + '.npy', data)
+        # Kmean cluster for color image using scikit image
+        # Define a rectangular region and segment the region based on the color and edge
+        # Given the image mask, output the region image
+        # Core idea: The K mean cluster in the original method
+        # Load the image
+        # img = cv2.imread('/home/maguangshen/PycharmProjects/BTL_GS/Data/Data_img/test_1.png')
+        # print(img)
+        # RGB to LAB
+        # img_lab = color.rgb2lab(img)
+        # print(img_lab)
+
+        # Superpixels
+        # N_grid = 2000
+
+        # Label the boundary
+
+        # Mean values for each sub regions
+
+        # Kmean clusters
 
 class sec_obj:
 
     # This class is defined for object segmentation and object recognition
-    # Goal: Find the retangular object and ignore other distractors
+    # Goal: Find the rectangular object and ignore other distractors
     # input: BW of the edge result
-    # output: The coarse region of the contour: retangular by default
+    # output: The coarse region of the contour: rectangular by default
 
     def __init__(self):
         img = []
@@ -264,79 +340,129 @@ class sec_obj:
         cap.release()
 
     def exp_ConRec(self):
+
         # Find the object with the specific contour -- Rectangular
         # The problem assumes the problem to be 4 vertices
         # After region detection, threshold the content inside the region
         # Ref: https://www.learnopencv.com/read-write-and-display-a-video-using-opencv-cpp-python/
 
+        # Basic video setting
         cap = cv2.VideoCapture(0)
         frame_width = int(cap.get(3))
         frame_height = int(cap.get(4))
         fourcc = cv2.VideoWriter_fourcc(*'XVID')
-        out = cv2.VideoWriter('outpy.avi', cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), 10, (frame_width, frame_height))
+        # out = cv2.VideoWriter('outpy.avi', cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), 10, (frame_width, frame_height))
+
+        # Realtime Loop
         while (True):
-            _, img = cap.read()
+
             # Load the image
+            _, img = cap.read()
             # img = cv2.imread('/home/maguangshen/PycharmProjects/BTL_GS/Data/Data_img/img_crop_1.png')
-            img_small = cv2.resize(img, (0, 0), fx=0.5, fy=0.5)
+
             img_gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
             img_gray = cv2.GaussianBlur(img_gray, (3, 3), 0)
-            # print(img.shape)
-            # cv2.imshow("Small", img_small)
-            # plt.subplot(2, 2, 1), plt.imshow(img_gray, 'gray')
-            # plt.show()
-            # cv2.imshow("Gray", img_gray)
 
             # Detect edges in the image
-            H_show = cv2.hconcat((img_gray, img_gray))
-            V_show = cv2.vconcat((H_show, H_show))
             edged = cv2.Canny(img_gray, 10, 250)
             final_frame = cv2.hconcat((img_gray, edged))
-            cv2.imshow('lena', V_show)
+            H_show_1 = cv2.hconcat((img_gray, edged))
+            V_show = cv2.vconcat((H_show_1, H_show_1))
 
-            # cv2.imshow("Edged", edged)
+            # Record the video with each frame
+            # out.write(img)
 
-            out.write(img)
-
-            # construct and apply a closing kernel to 'close' gaps between 'white' pixels -- close the region
+            # Construct and apply a closing kernel to 'close' gaps between 'white' pixels -- close the region
             kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (7, 7))
             closed = cv2.morphologyEx(edged, cv2.MORPH_CLOSE, kernel)
-            #cv2.imshow("Closed", closed)
 
-            # find contours (i.e. the 'outlines') in the image and initialize the total number of regions found
+            # Find contours (i.e. the 'outlines') in the image and initialize the total number of regions found
             _, contours, _ = cv2.findContours(closed.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             # print(contours)
             total = 0
 
             # Find the contour with four vertices
+            height, width, depth = img.shape    # The parameters for the mask
             for c in contours:
                 peri = cv2.arcLength(c, True)
                 approx = cv2.approxPolyDP(c, 0.02 * peri, True)
+                rec_img = np.zeros((height, width), np.uint8)
                 if len(approx) == 4:
                     cv2.drawContours(img, [approx], -1, (0, 255, 0), 4)
-                    print (approx)
+                    X_approx, Y_approx = list2pt(approx)      # The parameters for the rectangle
+                    mask = np.zeros(img.shape, dtype="uint8")
+                    # Create the mask region as the rectangular
+                    cv2.rectangle(mask, (min(X_approx), max(Y_approx)), (max(X_approx), min(Y_approx)), (255, 255, 255), -1)
+                    maskedImg = cv2.bitwise_and(img, mask)
+                    cv2.imshow("Masked Image", maskedImg)
+                    cv2.waitKey(5)
                 total += 1  # The number of target contour
 
-            # Design a mask based no the four vertices
-            Vtx = approx    # The coordinates of the four vertices
-
-            # Mask the region and segment the region
-
-            # threhold the pink color with a stable method
-
-            # display the output
-            #cv2.imshow("Output", img)
-            cv2.waitKey(5)
-
+        # Post processing
+        cv2.waitKey(5)
         cv2.destroyAllWindows()
         cap.release()
-        out.release()
+        # out.release()
+
+    def exp_Color(self):
+
+        # Detect the region based on the color threshold -- Realtime
+        # ref: https://www.pyimagesearch.com/2014/08/04/opencv-python-color-detection/
+
+        # Construct the argument parse and parse the arguments
+        # ap = argparse.ArgumentParser()
+        # ap.add_argument("-i", "--image", help="path to the image")
+        # args = vars(ap.parse_args())
+        # # load the image
+        # image = cv2.imread(args["image"])
+
+        # Load the realtime image
+        cap = cv2.VideoCapture(0)
+
+        # Define the list of color boundaries
+        boundaries = [([17, 15, 100], [50, 56, 200]), \
+                      ([86, 31, 4], [220, 88, 50]), \
+                      ([25, 146, 190], [62, 174, 250]), \
+                      ([103, 86, 65], [145, 133, 128])]
+
+        red_color = boundaries[0]
+        while(True):
+            _, img = cap.read()
+            lower = red_color[0]; upper = red_color[1]
+            lower = np.array(lower, dtype= "uint8" )
+            upper = np.array(upper, dtype= "uint8" )
+            # Find the colors within the specified boundaries and apply the mask
+            mask = cv2.inRange(img, lower, upper)
+            output = cv2.bitwise_and(img, img, mask=mask)
+            # Show the images
+            cv2.imshow("images", np.hstack([img, output]))
+            cv2.waitKey(5)
+
+def list2pt(obj):
+    # input: specific list
+    # output: min(x), max(x), min(y), max(y)
+    X = np.asarray( (obj[0][0][0], obj[1][0][0], obj[2][0][0], obj[3][0][0]))
+    Y = np.asarray((obj[0][0][1], obj[1][0][1], obj[2][0][1], obj[3][0][1]))
+    p1 = (obj[0][0][0], obj[0][0][1])
+    p2 = (obj[1][0][0], obj[1][0][1])
+    p3 = (obj[2][0][0], obj[2][0][1])
+    p4 = (obj[3][0][0], obj[3][0][1])
+    return X, Y
 
 if __name__ == '__main__':
 
     test = sec_obj()
+    test.exp_Color()
+
+    # test = sec_seg()
+    # test.ImgKmeanCluster()
+
+    # test = sec_seg()
+    # test.ImgMask()
+
+    # test = sec_obj()
     # test.exp_video()
-    test.exp_ConRec()
+    # test.exp_ConRec()
 
     # test = sec_obj()
     # test.exp_video()
@@ -354,7 +480,7 @@ if __name__ == '__main__':
     # test.ImgViz()
 
     # Test threshold method
-    # test.ImgThreshold()
+    # test.ImgThreshold()           # Can change the threshold to detect the region
 
     # Test adaptive thresholding method
     # test.ImgAdaptThreshold()
