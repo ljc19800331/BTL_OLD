@@ -28,7 +28,7 @@ class VtkPointCloud:
         self.vtkPolyData = vtk.vtkPolyData()        # poly data obj
         self.clearPoints()                          # modify depth data
         mapper = vtk.vtkPolyDataMapper()            # Design the mapper info
-        mapper.SetInput(self.vtkPolyData)       # Scalar problem -- color depth
+        mapper.SetInputData(self.vtkPolyData)       # Scalar problem -- color depth
         mapper.SetColorModeToDefault()
         mapper.SetScalarRange(zMin, zMax)
         mapper.SetScalarVisibility(1)
@@ -89,9 +89,9 @@ class sec_viz():
 
     def __init__(self):
         self.a = 1
-        self.txtbrain_x = '/home/maguangshen/PycharmProjects/BTL_GS/Data/brain_x.txt'
-        self.txtbrain_y = '/home/maguangshen/PycharmProjects/BTL_GS/Data/brain_y.txt'
-        self.txtbrain_z = '/home/maguangshen/PycharmProjects/BTL_GS/Data/brain_z.txt'
+        self.txtbrain_x = '/home/maguangshen/PycharmProjects/pcltest/Data/brain_x.txt'
+        self.txtbrain_y = '/home/maguangshen/PycharmProjects/pcltest/Data/brain_y.txt'
+        self.txtbrain_z = '/home/maguangshen/PycharmProjects/pcltest/Data/brain_z.txt'
 
     def PointUpdate(self, npy_data, x_pos, y_pos):
 
@@ -430,7 +430,7 @@ def stl_viz():
 
     # Input: stlname
     # Output: actor for the stl
-    filename = '/home/maguangshen/PycharmProjects/BTL_GS/Data/brain_tumor_scaled.stl'
+    filename = '/home/maguangshen/PycharmProjects/pcltest/Data/brain_tumor_scaled.stl'
     reader = vtk.vtkSTLReader()
     reader.SetFileName(filename)
     mapper = vtk.vtkPolyDataMapper()
@@ -521,7 +521,7 @@ def ActorColor(npy_data, vec_color):
 
     # Set up the actor and mapper
     mapper = vtk.vtkPolyDataMapper()
-    mapper.SetInput(polydata)
+    mapper.SetInputData(polydata)
     actor = vtk.vtkActor()
     actor.SetMapper(mapper)
 

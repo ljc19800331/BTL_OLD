@@ -88,9 +88,9 @@ def npy2vtk(npy_data):
     return vtk_data
 
 if __name__ == '__main__':
-    txt_x = '/home/maguangshen/PycharmProjects/BTL_GS/others/VIZ tool/Data/brain_x.txt'
-    txt_y = '/home/maguangshen/PycharmProjects/BTL_GS/others/VIZ tool/Data/brain_y.txt'
-    txt_z = '/home/maguangshen/PycharmProjects/BTL_GS/others/VIZ tool/Data/brain_z.txt'
+    txt_x = '/home/maguangshen/PycharmProjects/pcltest/Data/brain_x.txt'
+    txt_y = '/home/maguangshen/PycharmProjects/pcltest/Data/brain_y.txt'
+    txt_z = '/home/maguangshen/PycharmProjects/pcltest/Data/brain_z.txt'
 
     # test txt2vtk
     vtk_scan, scan_x, scan_y, scan_z = txt2vtk(txt_x, txt_y, txt_z)
@@ -100,6 +100,5 @@ if __name__ == '__main__':
     SEC_VIZ.vtk_pc([vtk_scan])
 
     # test vec2mat
-
     # test npy2vtk
 
