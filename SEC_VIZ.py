@@ -18,7 +18,6 @@ from stl import mesh
 import SEC_MAP
 import SEC_PRE
 
-
 class VtkPointCloud:
 
     # The depth color mapping case
@@ -175,8 +174,8 @@ class sec_viz():
         # Input: Laser spot / starting point
         # Output: Laser path in the local coordinate
         # The rule is that the starting point is always on the left
-        x_o = 2; y_o = 2    # The origin of the scanning point
-        unit = 0.005    # inch
+        x_o = 1.75; y_o = 1.75    # The origin of the scanning point
+        unit = 0.05    # inch
         x_range = 0.5   # scan size
         y_range = 0.5   # scan size
         Nx = x_range / unit; Ny = y_range / unit
@@ -311,20 +310,20 @@ class sec_viz():
             ren_1.AddActor(actor_ball)
             renWin_1.Render()
             time.sleep(0.1)
-            ren_1.RemoveActor(actor_spot)
-            ren_1.RemoveActor(actor_ball)
+            # ren_1.RemoveActor(actor_spot)
+            # ren_1.RemoveActor(actor_ball)
             # iren.Initialize()
             renWin_1.Render()
             #
-            # ren_2.SetActiveCamera(camera_1)
-            # ren_2.AddActor(actor_spot)
-            # ren_2.AddActor(actor_ball)
-            # renWin_2.Render()
-            # time.sleep(0.1)
+            ren_2.SetActiveCamera(camera_1)
+            ren_2.AddActor(actor_spot)
+            ren_2.AddActor(actor_ball)
+            renWin_2.Render()
+            time.sleep(0.1)
             # ren_2.RemoveActor(actor_spot)
             # ren_2.RemoveActor(actor_ball)
-            # # iren.Initialize()
-            # renWin_2.Render()
+            # iren.Initialize()
+            renWin_2.Render()
 
 def DoublenWin():
     # create two cameras
