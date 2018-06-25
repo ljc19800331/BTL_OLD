@@ -1,37 +1,20 @@
-# This function is only for the pcl test
-# Goals:
-# 1. test different function and show the viz result
-# 2. ICP and other functions
-# 3. Segmentation
-# 4. SAC -- point cloud stiching method
-# 5. Smoothing method
-# 6. Filtering
-# 7. Registration
-
+# This code is used for 3D processing -- especially point cloud
 from __future__ import print_function
 import numpy as np
 from numpy import cos, sin
-import unittest     # What is the unittest function here?
 import pcl
 import vtk
-import SEC_VIZ
+import BTL_VIZ
 import time
 
-class pcltest():
+class ICP:
+
     def __init__(self):
-        # the brain txt files
-        test = 1
+        self.pcd_name = "/home/maguangshen/PycharmProjects/BTL_GS/Data/test.pcd"
 
-    def exp_icp(self,):
-        a = 1
+    def Init(self):
 
-class TestICP():
-    def __init__(self):
-        test = 2
-
-    def setUp(self):
-
-        # Set up the transform
+        # Randomly choose the transform
         theta = [-1, 0.5, 1]
         rot_x = [[1, 0, 0],
                  [0, cos(theta[0]), -sin(theta[0])],
@@ -44,15 +27,14 @@ class TestICP():
                  [0, 0, 1]]
         transform = np.dot(rot_x, np.dot(rot_y, rot_z))
 
-        # source
-        pcd_name = "/home/maguangshen/PycharmProjects/BTL_GS/Data/test.pcd"
-        source = np.asarray(pcl.load(pcd_name))
+        # Source 3D sets
+        source = np.asarray(pcl.load(self.pcd_name))
         self.pcd_source = source
         self.source = pcl.PointCloud(source.astype(np.float32))
         self.pcd_update = source
         self.update = pcl.PointCloud(self.pcd_update .astype(np.float32))
 
-        # Target
+        # Target 3D sets
         target =  np.dot(source, transform)
         self.pcd_target = target
         self.target = pcl.PointCloud(target.astype(np.float32))
@@ -67,8 +49,8 @@ class TestICP():
         y_t = np.asarray(self.pcd_target[:,1])
         z_t = np.asarray(self.pcd_target[:,2])
 
-        vtk_source = SEC_VIZ.VtkPointCloud()
-        vtk_target = SEC_VIZ.VtkPointCloud()
+        vtk_source = BTL_VIZ.VtkPointCloud()
+        vtk_target = BTL_VIZ.VtkPointCloud()
 
         for k in range(len(x_s)):
             point_s = ([x_s[k], y_s[k], z_s[k]])
@@ -89,37 +71,39 @@ class TestICP():
         # transform the model
         Res = np.dot(self.pcd_source, transf_s2t)
         print(Res)
-        vtk_res = SEC_VIZ.VtkPointCloud()
+        vtk_res = BTL_VIZ.VtkPointCloud()
         x_res = np.asarray(Res[:, 0])
         y_res = np.asarray(Res[:, 1])
         z_res = np.asarray(Res[:, 2])
         for k in range(len(x_res)):
             point_res = ([x_res[k], y_res[k], z_res[k]])
             vtk_res.addPoint(point_res)
-        SEC_VIZ.vtk_pc([vtk_res, vtk_target])
+        BTL_VIZ.VizVtk([vtk_res, self.vtk_target])
         return converged, transf, estimate, fitness
 
     def ICPupdate(self):
+
         # Return the transform
         # This function is used to viz the ICP process
         icp = self.update.make_IterativeClosestPoint()
         converged, transf, estimate, fitness = icp.icp(self.update, self.target, max_iter=50)
 
-        # transpose the rotation matrix
+        # Transpose the rotation matrix
         transf_s2t = np.transpose(transf)[0:3, 0:3]
 
-        # update the new model
+        # Update the new model
         self.pcd_update = np.dot(self.pcd_update, transf_s2t)
         self.update = pcl.PointCloud(self.pcd_update.astype(np.float32))
         print(self.pcd_update)
 
     def VizUpdate(self):
 
+        # Selfly update the point set
         obj = self.pcd_update
         x_obj = np.asarray(obj [:, 0])
         y_obj = np.asarray(obj [:, 1])
         z_obj = np.asarray(obj [:, 2])
-        vtk_update = SEC_VIZ.VtkPointCloud()
+        vtk_update = BTL_VIZ.VtkPointCloud()
         for k in range(len(x_obj)):
             point_obj = ([x_obj[k], y_obj[k], z_obj[k]])
             vtk_update.addPoint(point_obj)
@@ -127,12 +111,17 @@ class TestICP():
         print(self.vtk_update)
 
 if __name__ == '__main__':
-    test = TestICP()
-    test.setUp()
+
+    # Set up
+    test = ICP()
+    test.Init()
     vtk_source, vtk_target = test.pcd2vtk()
-    # SEC_VIZ.vtk_pc([vtk_source,vtk_target])
+
+    # Basic ICP
+    # BTL_VIZ.VizVtk([vtk_source, vtk_target])
     # converged, transf, estimate, fitness = test.testICP()
 
+    # Update version ICP
     ren = vtk.vtkRenderer()
     renWin = vtk.vtkRenderWindow()
     renWin.AddRenderer(ren)
@@ -141,7 +130,7 @@ if __name__ == '__main__':
     iren.SetRenderWindow(renWin)
 
     # Continue iteration
-    while(True):
+    while (True):
         test.ICPupdate()
         test.VizUpdate()
         actor_1 = test.vtk_update[0].vtkActor
@@ -154,5 +143,3 @@ if __name__ == '__main__':
         ren.RemoveActor(actor_2)
         iren.Initialize()
         renWin.Render()
-
-

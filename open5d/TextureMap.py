@@ -15,9 +15,9 @@ from DataConvert import *
 class Feature3d:
 
     def __init__(self):
-        self.color_name = '/home/maguangshen/PycharmProjects/BTL_GS/open5d/data/color.png'
-        self.tex_name = '/home/maguangshen/PycharmProjects/BTL_GS/open5d/data/tex.csv'
-        self.vtx_name = '/home/maguangshen/PycharmProjects/BTL_GS/open5d/data/vtx.csv'
+        self.color_name = '/home/maguangshen/PycharmProjects/BTL_GS/BTL/open5d/data/color.png'
+        self.tex_name = '/home/maguangshen/PycharmProjects/BTL_GS/BTL/open5d/data/tex.csv'
+        self.vtx_name = '/home/maguangshen/PycharmProjects/BTL_GS/BTL/open5d/data/vtx.csv'
 
     def DataLoad(self):
 
@@ -145,7 +145,7 @@ class Feature3d:
         # Save the data to the ply file
         write_points_in_vtp(points, color, outfile='points.vtp')
 
-        filename = '/home/maguangshen/PycharmProjects/BTL_GS/open5d/points.vtp'
+        filename = '/home/maguangshen/PycharmProjects/BTL_GS/BTL/open5d/points.vtp'
         renderer = vtk.vtkRenderer()
         renderer.SetBackground(.2, .3, .4)  # set background color
         renderer.ResetCamera()
