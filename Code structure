@@ -1,3 +1,105 @@
+Code structure:
+TextureMap:
+    Feature3d:
+        DataLoad: Load the data for the target files
+        Img_filter: Obtain the index of the target region from the image
+        ColorPc: Based on the index, obtain the corresponding point cloud
+    sub2ind and ind2sub: index convertion
+    write_points_in_vtp: convert the npy points to the vtp file
+
+SEC_MAP:
+    sec_map:
+        Txt2PtNpy: convert the text files to the numpy format
+        pt2len: convert the points to the length units
+        BrainInit: Initialize the parameter of the brain
+    AglTransform:
+    Npy2Origin: Substract the values to the origin
+
+SEC_PRE:
+    txt2vtk: convert txt file to vtk format
+    vec2mat: convert the vector to the matrix format
+    mat2vec: convert the matrix to the vector
+    npy2vtk: convert the numpy file to the vtk
+
+SEC_SEG:
+    sec_seg:
+        LoadImg:
+        ImgViz:
+        ImgThreshold:
+        ImgAdaptThreshold:
+        ImgWaterThreshold:
+        ImgMask:
+        ImgKmeanCluster:
+    sec_obj:
+        exp_video:
+        exp_Rec:
+        exp_RedRegion:
+        exp_ConRec:
+        exp_Color
+
+SEC_VIZ:
+    VtkPointCloud:
+        addPoint:
+        clearPoints:
+    vtkGyroCallback: This is for the point cloud visualization
+        execute:
+    sec_viz:
+        PointUpdate: update the point position and coordinate
+        SceneViz: visualize the scene of the coordinate
+        ScanPath: visualize the scanned path
+        ShootPath: visualize the shooting path
+    DoublenWin: Double windows
+    vtk_pc: visualize the point cloud
+    stl_viz: visualize the stl file
+    CamView: change the position of the camera view point
+    ActorColor: change the color of the actor object
+
+scanTypes_GS:
+    measure_point:
+    cut_array:
+    raster_scan:
+    raster_scan_v1:
+    raster_cut:
+    cut_line:
+    cut_loaded_path:
+    pig_data:
+    cutDepth:
+    stationary_scan:
+    plot_scan:
+
+SEC_Cam:
+    sec_cam:
+        StereoRec
+        DepthandColor
+        DepthorColor
+
+SEC_DataProcess:
+    txt2pt:
+    vec2mat:
+    mat2vec:
+    npy2vtk:
+    stl2pt:
+
+Test:
+    test pcl
+    test icp
+    test opencv
+
+SEC_VESSEL:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 Today's plan
 1: update -- finish
 2: stl scaling problem -- from stl to vertices -- finished with MATLAB and python
@@ -5,10 +107,10 @@ Today's plan
 4. spot size -- finished
 4.1 Double window -- finished
 5. scanning path integration -- finished
-6. Registration integration -- pending
-7. Github -- pending
+6. Registration integration -- working on
+7. Github -- finished
 8. TumorRegion exp -- finished
-8. blood vessel -- later
+8. blood vessel -- working on
 
 This doc is used for the code structure
 Goals:

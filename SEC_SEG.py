@@ -8,7 +8,6 @@
 # Problem definition 4: The surgical region is well defined
 # Problem definition 5: A clear boundary
 # Problem definition 6: The contour is always a rectangular (or a fixed shape)
-
 # ref1: Multiple images in one window
 # http://answers.opencv.org/question/175912/how-to-display-multiple-images-in-one-window/
 # ref2: Writing video with multiple windows
@@ -141,10 +140,6 @@ class sec_seg:
         # Ref:http://scikit-image.org/docs/0.12.x/auto_examples/segmentation/plot_segmentations.html
         # Ref:https://github.com/jayrambhia/superpixels-SLIC/blob/master/SLICcv.py
 
-        # This method is too slow
-
-        # example from scikit image
-
         # load image
         img = cv2.imread('/home/maguangshen/PycharmProjects/BTL_GS/others/superpixels-SLIC/test_1.png')
         # SLIC superpixel region segmentations
@@ -161,28 +156,6 @@ class sec_seg:
         plt.subplot(2, 2, 2), plt.imshow(segments)
         plt.subplot(2, 2, 3), plt.imshow(img_boundary)
         plt.show()
-
-        # data = np.asanyarray(segments)
-        # np.save('npydata' + '.npy', data)
-        # Kmean cluster for color image using scikit image
-        # Define a rectangular region and segment the region based on the color and edge
-        # Given the image mask, output the region image
-        # Core idea: The K mean cluster in the original method
-        # Load the image
-        # img = cv2.imread('/home/maguangshen/PycharmProjects/BTL_GS/Data/Data_img/test_1.png')
-        # print(img)
-        # RGB to LAB
-        # img_lab = color.rgb2lab(img)
-        # print(img_lab)
-
-        # Superpixels
-        # N_grid = 2000
-
-        # Label the boundary
-
-        # Mean values for each sub regions
-
-        # Kmean clusters
 
 class sec_obj:
 
@@ -438,21 +411,11 @@ class sec_obj:
             cv2.imshow("images", np.hstack([img, output]))
             cv2.waitKey(5)
 
-def list2pt(obj):
-    # input: specific list
-    # output: min(x), max(x), min(y), max(y)
-    X = np.asarray( (obj[0][0][0], obj[1][0][0], obj[2][0][0], obj[3][0][0]))
-    Y = np.asarray((obj[0][0][1], obj[1][0][1], obj[2][0][1], obj[3][0][1]))
-    p1 = (obj[0][0][0], obj[0][0][1])
-    p2 = (obj[1][0][0], obj[1][0][1])
-    p3 = (obj[2][0][0], obj[2][0][1])
-    p4 = (obj[3][0][0], obj[3][0][1])
-    return X, Y
-
 if __name__ == '__main__':
 
-    test = sec_obj()
-    test.exp_Color()
+    # Test the color
+    # test = sec_obj()
+    # test.exp_Color()
 
     # test = sec_seg()
     # test.ImgKmeanCluster()

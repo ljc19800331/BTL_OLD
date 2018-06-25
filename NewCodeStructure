@@ -1,0 +1,12 @@
+# This is a new code structure
+This code is the newest version
+
+File:
+    1. DataConvert: Convert the data to the specific format
+    2. BTL_MAP: Registration (pMR to intraoperative 3D printing features)
+    3. BTL_VIZ: Visualization tool
+    4. open5d: stereo depth vision feature extraction + BTL_SEG: Real-time image segmentation for the surgical site (mask tool)
+
+DataConvert: Basic data format conversion
+BTL_VIZ: Visualization tool. The basic data format is .vtk and ply (for realtime application)
+

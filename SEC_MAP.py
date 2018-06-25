@@ -1,7 +1,5 @@
 import math
-
 import numpy as np
-
 import SEC_PRE
 import SEC_VIZ
 
@@ -124,49 +122,6 @@ class sec_map:
                 pt_xyz[:, 2] = pt_xyz[:, 2] * c
 
         return pt_xyz
-
-    def Brain_Init(self, txtbrain_x, txtbrain_y, txtbrain_z, theta):
-
-        # Load the data
-        vtk_brain, npy_brain, brain_x, brain_y, brain_z = self.Txt2PtNpy(txtbrain_x, txtbrain_y, txtbrain_z)
-
-        # # Define the transformation matrix
-        theta_x = theta[0]; theta_y = theta[1]; theta_z = theta[2]
-        R_tform = AglTransform(theta_x, theta_y, theta_z)
-        pc_tform = np.matmul(npy_brain, R_tform)
-        pc_tform = np.asarray(pc_tform)             # The difference between ndarray and asanyarray
-        pc_tform = self.pt2Len(pc_tform, 'brain', 'inch')
-        # change the size parameter to inch
-        pc_tform = Npy2Origin(pc_tform)
-
-        # Change the format to the npy data
-        vtk_brain = SEC_PRE.npy2vtk(pc_tform)
-
-        return vtk_brain, pc_tform, pc_tform[:,0], pc_tform[:,1], pc_tform[:,2]
-
-def AglTransform(Agl_x, Agl_y, Agl_z):
-
-    # Rotary transform in 3D space
-    # Input: angle degree (ex: 90, 180, 45)
-    # Output: 3 by 3 rotation matrix
-
-    theta_x = math.pi / 180 * Agl_x
-    theta_y = math.pi / 180 * Agl_y
-    theta_z = math.pi / 180 * Agl_z
-    Rx = np.matrix([[1, 0, 0], [0, math.cos(theta_x), math.sin(theta_x)], [0, -math.sin(theta_x), math.cos(theta_x)]])
-    Ry = np.matrix([[math.cos(theta_y), 0, -math.sin(theta_y)], [0, 1, 0], [math.sin(theta_y), 0, math.cos(theta_y)]])
-    Rz = np.matrix([[math.cos(theta_z), math.sin(theta_z), 0], [-math.sin(theta_z), math.cos(theta_z), 0], [0, 0, 1]])
-    R_tform = Rx * Ry * Rz
-    return R_tform
-
-def Npy2Origin(npy_model):
-
-    # move all the point to the origin
-    npy_model[:,0] = npy_model[:,0] - np.min(npy_model[:,0])
-    npy_model[:,1] = npy_model[:,1] - np.min(npy_model[:,1])
-    npy_model[:,2] = npy_model[:,2] - np.min(npy_model[:,2])
-
-    return npy_model
 
 if __name__ == '__main__':
 

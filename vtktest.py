@@ -59,5 +59,5 @@ def main():
     # start the interaction and timer
     renderWindowInteractor.Start()
 
-if __name__ == '__main__':
-    main()
+# if __name__ == '__main__':
+#     main()
