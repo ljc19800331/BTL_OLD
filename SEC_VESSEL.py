@@ -8,10 +8,38 @@
 # Edge detection --
 # circle object detection -- focus on the image
 
-class sec_vessel():
+import vtk
+import pcl
+import cv2
 
-    def __init__(self):
-        a = 1
+filename = "/home/maguangshen/PycharmProjects/BTL_GS/Data/vessel.stl"
 
-    def ColorSeg(self):
-        a = 1
+reader = vtk.vtkSTLReader()
+reader.SetFileName(filename)
+
+mapper = vtk.vtkPolyDataMapper()
+if vtk.VTK_MAJOR_VERSION <= 5:
+    mapper.SetInput(reader.GetOutput())
+else:
+    mapper.SetInputConnection(reader.GetOutputPort())
+
+actor = vtk.vtkActor()
+actor.SetMapper(mapper)
+
+# Create a rendering window and renderer
+ren = vtk.vtkRenderer()
+renWin = vtk.vtkRenderWindow()
+renWin.AddRenderer(ren)
+
+# Create a renderwindowinteractor
+iren = vtk.vtkRenderWindowInteractor()
+iren.SetRenderWindow(renWin)
+
+# Assign actor to the renderer
+ren.AddActor(actor)
+
+# Enable user interface interactor
+iren.Initialize()
+renWin.Render()
+iren.Start()
+

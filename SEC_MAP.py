@@ -5,7 +5,6 @@ import numpy as np
 import SEC_PRE
 import SEC_VIZ
 
-
 class sec_map:
 
     def __init__(self):

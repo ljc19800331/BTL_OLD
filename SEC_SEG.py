@@ -19,6 +19,12 @@
 # https://www.pyimagesearch.com/2014/08/04/opencv-python-color-detection/
 # ref5: computer vision and image processing expert
 # https://www.pyimagesearch.com/pyimagesearch-gurus/
+# 3D tracking
+# https://www.hdm-stuttgart.de/~maucher/Python/ComputerVision/html/Tracking.html
+# https://www.learnopencv.com/object-tracking-using-opencv-cpp-python/      (object tracking)
+# Stereo image processing
+# https://rdmilligan.wordpress.com/2016/05/23/disparity-of-stereo-images-with-python-and-opencv/
+
 
 import cv2
 import numpy as np
@@ -347,7 +353,7 @@ class sec_obj:
         # Ref: https://www.learnopencv.com/read-write-and-display-a-video-using-opencv-cpp-python/
 
         # Basic video setting
-        cap = cv2.VideoCapture(0)
+        cap = cv2.VideoCapture(2)
         frame_width = int(cap.get(3))
         frame_height = int(cap.get(4))
         fourcc = cv2.VideoWriter_fourcc(*'XVID')
@@ -417,7 +423,7 @@ class sec_obj:
         # image = cv2.imread(args["image"])
 
         # Load the realtime image
-        cap = cv2.VideoCapture(0)
+        cap = cv2.VideoCapture(2)
 
         # Define the list of color boundaries
         boundaries = [([17, 15, 100], [50, 56, 200]), \
@@ -451,8 +457,8 @@ def list2pt(obj):
 
 if __name__ == '__main__':
 
-    test = sec_obj()
-    test.exp_Color()
+    # test = sec_obj()
+    # test.exp_Color()
 
     # test = sec_seg()
     # test.ImgKmeanCluster()
@@ -460,9 +466,9 @@ if __name__ == '__main__':
     # test = sec_seg()
     # test.ImgMask()
 
-    # test = sec_obj()
+    test = sec_obj()
     # test.exp_video()
-    # test.exp_ConRec()
+    test.exp_ConRec()
 
     # test = sec_obj()
     # test.exp_video()
