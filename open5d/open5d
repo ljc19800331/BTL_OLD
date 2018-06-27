@@ -1,0 +1,29 @@
+Goal:
+
+open5d:
+input:
+    1: A texture coordinate
+    2: An color image
+    3: A vertex coordinate
+output:
+    1: A 3D point cloud
+    2: A real-time coordinate system
+    3: A real-time
+
+Functions:
+1. TextureMap
+    Texture mapping for the real-time point cloud data
+    function:
+        DataLoad
+        Img_filter
+        ColorPc
+
+2. CamModel
+    The extrinsic parameters for the camera model
+
+3. Laser model
+    The extrinsic parameters for the laser model
+
+Other functions:
+    ind2sub and sub2ind
+    write_points_in_vtp
