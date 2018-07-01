@@ -174,8 +174,13 @@ def Show_color_pc(points, color):
     # points: numpy N by 3
     # color: numpy N by 3
 
+    transform = vtk.vtkTransform()  # transformation of a 3D axis
+    transform.Translate(0.0, 0.0, 0.0)  # Remain the default setting
+    axes = vtk.vtkAxesActor()  # Add the axis actor
+    axes.SetUserTransform(transform)
+
     write_points_in_vtp(points, color, outfile='points.vtp')
-    filename = '/home/maguangshen/PycharmProjects/realsense/points.vtp'
+    filename = '/home/maguangshen/PycharmProjects/BTL/realsense/points.vtp'
     renderer = vtk.vtkRenderer()
     renderer.SetBackground(.2, .3, .4)  # set background color
     renderer.ResetCamera()
@@ -187,6 +192,7 @@ def Show_color_pc(points, color):
     actor = vtk.vtkActor()
     actor.SetMapper(mapper)
     renderer.AddActor(actor)
+    renderer.AddActor(axes)
     # Render Window
     renderWindow = vtk.vtkRenderWindow()
     renderWindow.AddRenderer(renderer)

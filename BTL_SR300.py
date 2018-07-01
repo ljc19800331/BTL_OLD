@@ -1,9 +1,8 @@
-
 # Ref: https://github.com/bradmontgomery/python-laser-tracker/blob/master/laser_tracker/laser_tracker.py
 # https://www.codeproject.com/Articles/91470/Computer-Vision-Laser-Range-Finder
 # This file is mainly for processing the realsense code
 # Laser tracker in 2D image
-# Kalman filter
+# Kalman filter -- reduce the error for the laser region
 # Take the centroid
 # Viz the circle or result
 
@@ -35,14 +34,13 @@ class LaserTracker(object):
 
         self.cam_width = cam_width
         self.cam_height = cam_height
-        self.hue_min = hue_min
+        self.hue_min = hue_min              # Hue values
         self.hue_max = hue_max
-        self.sat_min = sat_min
+        self.sat_min = sat_min              # Saturation values
         self.sat_max = sat_max
-        self.val_min = val_min
+        self.val_min = val_min              # pixelv values
         self.val_max = val_max
         self.display_thresholds = display_thresholds
-
         self.capture = None  # camera capture device
         self.channels = {
             'hue': None,
@@ -83,14 +81,9 @@ class LaserTracker(object):
             sys.exit(1)
 
         # set the wanted image size from the camera
-        self.capture.set(
-            cv2.cv.CV_CAP_PROP_FRAME_WIDTH if cv2.__version__.startswith('2') else cv2.CAP_PROP_FRAME_WIDTH,
-            self.cam_width
-        )
-        self.capture.set(
-            cv2.cv.CV_CAP_PROP_FRAME_HEIGHT if cv2.__version__.startswith('2') else cv2.CAP_PROP_FRAME_HEIGHT,
-            self.cam_height
-        )
+        self.capture.set(cv2.cv.CV_CAP_PROP_FRAME_WIDTH if cv2.__version__.startswith('2') else cv2.CAP_PROP_FRAME_WIDTH,self.cam_width)
+        self.capture.set(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT if cv2.__version__.startswith('2') else cv2.CAP_PROP_FRAME_HEIGHT,self.cam_height)
+
         return self.capture
 
     def handle_quit(self, delay=10):
@@ -220,6 +213,7 @@ class LaserTracker(object):
             cv2.imshow('Value', self.channels['value'])
 
     def setup_windows(self):
+
         sys.stdout.write("Using OpenCV version: {0}\n".format(cv2.__version__))
 
         # create output windows
@@ -233,14 +227,17 @@ class LaserTracker(object):
             self.create_and_position_window('Value', 40, 40)
 
     def run(self):
+
         # Set up window positions
         self.setup_windows()
         # Set up the camera capture
         self.setup_camera_capture()
-
+        #
         while True:
+
             # 1. capture the current image
             success, frame = self.capture.read()
+
             if not success:  # no image captured... end the processing
                 sys.stderr.write("Could not read camera frame. Quitting\n")
                 sys.exit(1)
@@ -384,7 +381,6 @@ def exp_facetrack():
                         rows = list(range(y, y + h))
                         for i in rows:
                             for j in cols:
-                                # 坐标变换一定要注意检查
                                 depth = depth_frame.get_distance(j, i)
                                 depth_point = rs.rs2_deproject_pixel_to_point(
                                     depth_intrin, [j, i], depth)
@@ -416,10 +412,10 @@ def exp_facetrack():
 if __name__ == '__main__':
 
     # Laser track
-    # LaserTrack()
+    LaserTrack()
 
     # Intrinsic parameter
     # CamIn()
 
     # Extinsic parameter
-    CamEx()
+    # CamEx()

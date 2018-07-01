@@ -302,6 +302,38 @@ def VizVtk(vtk_list):
     renderWindow.Render()
     renderWindowInteractor.Start()
 
+def VizActor(actor_list):
+
+    transform = vtk.vtkTransform()  # transformation of a 3D axis
+    transform.Translate(0.0, 0.0, 0.0)  # Remain the default setting
+    axes = vtk.vtkAxesActor()  # Add the axis actor
+    axes.SetUserTransform(transform)
+
+    # Renderer -- with a loop
+    renderer = vtk.vtkRenderer()
+    renderer.SetBackground(.2, .3, .4)  # set background color
+    renderer.ResetCamera()
+    renderer.AddActor(axes)
+    for item in actor_list:
+        renderer.AddActor(item)
+    # Render Window
+    renderWindow = vtk.vtkRenderWindow()
+    renderWindow.AddRenderer(renderer)
+    # Interactor
+    renderWindowInteractor = vtk.vtkRenderWindowInteractor()
+    renderWindowInteractor.SetRenderWindow(renderWindow)
+    # Begin Interaction
+    renderWindow.Render()
+    renderWindowInteractor.Start()
+
+def ActorAxes(origin):
+
+    transform = vtk.vtkTransform()
+    transform.Translate(origin[0], origin[1], origin[2])
+    axes = vtk.vtkAxesActor()
+    axes.SetUserTransform(transform)
+    return axes
+
 def ActorStl(stlname):
 
     # Input: stlname

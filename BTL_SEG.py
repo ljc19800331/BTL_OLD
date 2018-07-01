@@ -43,7 +43,7 @@ def MaskCircle():
 
     # Ref: https://stackoverflow.com/questions/25074488/how-to-mask-an-image-using-numpy-opencv
     # Test the mask function
-    img = cv2.imread('/home/maguangshen/PycharmProjects/BTL_GS/Data/Data_img/test_1.png')
+    img = cv2.imread('/home/maguangshen/PycharmProjects/realsense/color.png')
     height, width, depth = img.shape
     circle_img = np.zeros((height, width), np.uint8)
 
@@ -98,7 +98,7 @@ def exp_ConRec():
     # Ref: https://www.learnopencv.com/read-write-and-display-a-video-using-opencv-cpp-python/
 
     # Basic video setting
-    cap = cv2.VideoCapture(1)
+    cap = cv2.VideoCapture(0)
     frame_width = int(cap.get(3))
     frame_height = int(cap.get(4))
 
@@ -234,13 +234,13 @@ if __name__ == '__main__':
     cap = cv2.VideoCapture(1)
 
     # Test the color
-    SegColor(cap)
+    # SegColor(cap)
 
     # Test the ImgKmeanCluster algorithm
     # KmeanClusterSeg()
 
     # Test MaskSeg
-    # MaskCircle()
+    MaskCircle()
 
     # Test CannyEdge
     # CannyEdge(cap)

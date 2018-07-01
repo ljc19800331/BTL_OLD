@@ -274,6 +274,15 @@ def sub2ind(row, col, h, w):
     idx = (row - 1) * w + col
     return idx
 
+def Bracket2npy(vtx):
+    npy_data = np.zeros((len(vtx), 3))
+    for i in range(len(vtx)):
+        npy_data[i, 0] = vtx[i][0]
+        npy_data[i, 1] = vtx[i][1]
+        npy_data[i, 2] = vtx[i][2]
+
+    return npy_data
+
 if __name__ == '__main__':
 
     # Test txt2vtk
