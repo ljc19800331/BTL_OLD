@@ -17,6 +17,8 @@ import time
 import os, os.path
 import vtk
 from DataConvert import *
+import BTL_MultiProcess
+import thread
 
 class PNP:
 
@@ -223,18 +225,18 @@ class PNP:
         if os.path.exists(filename):
             os.remove(filename)
 
-        mtiScanSpan = [1.6, 1.6]        # The scanning region of the MTI
-        pointDistance = 0.1           # inches between each point on the scan
+        mtiScanSpan = [1.8, 1.8]        # The scanning region of the MTI
+        pointDistance = 0.3           # inches between each point on the scan
 
         # Move the center of the scan using wasd
         print 'Set center of scan.'
         x_c = 0; y_c = 0                # The starting angles value -- origin
 
         # Define the initial position from the origin -- different from (0,0)
-        UserIn = self.Inch2Angle(1.6, -1.6)
+        UserIn = self.Inch2Angle(0.96, -0.96)
 
-        centerScan, z_dist, center_angles = self.CM.controlPoint_v1([x_c], [y_c], UserIn)
-        # centerScan, z_dist, center_angles = self.CM.controlPoint([x_c], [y_c])
+        # centerScan, z_dist, center_angles = self.CM.controlPoint_v1([x_c], [y_c], UserIn)
+        centerScan, z_dist, center_angles = self.CM.controlPoint([x_c], [y_c])
         print "The center angles are", center_angles
 
         print 'Set scan box location and size.'
@@ -250,7 +252,7 @@ class PNP:
         target_points, filtered_points = self.ST.raster_scan_v1(centerScan, scanSpread, z_dist, pointsPerX, pointsPerY, 'Scan', 'ScanAngles')
         self.ST.plot_scan(target_points, 1)
         self.PointSTA(target_points)
-        np.save('C:/Users/gm143/TumorCNC_brainlab/BTL/P_3D.npy', target_points)
+        np.save('C:/Users/gm143/TumorCNC_brainlab/BTL/P3D_stereo.npy', target_points)
         # find the origin and the coordinate system
         # max, min -- x,y mean z -- checking the values
 
@@ -448,6 +450,179 @@ class PNP:
         # begin mouse interaction
         renderWindowInteractor.Start()
 
+    def Scan3d(self):
+
+        centerScan = [0, 0]
+
+        x_angle = [0]
+        y_angle = [0]
+
+        x_cent_ang = x_angle  # np.array( -1.0381408);
+        y_cent_ang = y_angle  # np.array(-1.168893);
+
+        self.CD.point_move(x_cent_ang, y_cent_ang, .005)
+
+        z_dist = float(self.CD.point_measure(1))                                            # Measure the plane
+        z_dist = float((z_dist / 0.04 + 175) * 0.03937007874)
+        org_targetPoints = self.CS.xy_position(x_cent_ang, y_cent_ang, z_dist)
+
+        centerScan[0] = org_targetPoints[0, 0]
+        centerScan[1] = org_targetPoints[0, 1]
+        z_dist = org_targetPoints[0, 2]
+
+        print "The centerScan is ", centerScan
+        print "The z_dist is ", z_dist
+
+        arrowMove = 0.05            # This is self-define
+
+        # MOVE_X = -np.linspace(0.0, 1.8, num=7)
+        # MOVE_Y = -np.linspace(0.0, 1.8, num=7)
+
+        [x_grid, y_grid] = np.meshgrid(-np.linspace(0.0, 1.8, 7), -np.linspace(0.0, 1.8, 7))
+
+        MOVE_X = x_grid.ravel()
+        MOVE_Y = y_grid.ravel()
+
+        print "The x_grid is ", MOVE_X
+        print "The y_grid is ", MOVE_Y
+
+        P_MTI = np.zeros([len(MOVE_X), 3])
+
+        for i in range(len(MOVE_X)):
+
+            move_x = MOVE_X[i]             # This is self-define
+            move_y = MOVE_Y[i]
+
+            centerScan[0] = org_targetPoints[0, 0] + move_x
+            centerScan[1] = org_targetPoints[0, 1] + move_y
+
+            # print('The centerScan is', centerScan)
+            [x_cent_ang, y_cent_ang] = self.CS.angular_position(np.array([centerScan[0]]),
+                                                                np.array([centerScan[1]]),
+                                                                np.array([z_dist]))             # recalculate the center
+            self.CD.point_move(x_cent_ang, y_cent_ang, 0.005)                                   # move to the new point
+            z_dist = float(self.CD.point_measure(0.1))                                          # measure a new distance (this returns a voltage)
+            z_dist2 = (z_dist / 0.04 + 175) * 0.03937007874                                     # convert the voltage to a distance
+            targetPoints = self.CS.xy_position(x_cent_ang, y_cent_ang,
+                                               z_dist2)                                         # figure out the actual point in space we are at
+            z_dist = targetPoints[0, 2]                                                         # return that distance
+            print "The current target points are ", z_dist
+            P_MTI[i, :] = np.asarray([move_x, move_y, z_dist])
+
+        print "The points of MTI are ", P_MTI
+        np.save('P_MIT.npy', P_MTI)
+
+    def Scan5d(self):
+
+        # Read the template image
+        img_template = cv2.imread('C:/Users/gm143/TumorCNC_brainlab/BTL/realsense/mask.png')
+        [h, w, _] = img_template.shape
+        print "The height of the image is ", h
+        print "The width of the image is ", w
+
+        # Define the ROI
+        r = cv2.selectROI(img_template)
+        imCrop = img_template[int(r[1]):int(r[1] + r[3]), int(r[0]):int(r[0] + r[2])]
+        cv2.imshow("Image", imCrop)
+        cv2.waitKey(0)
+        print "The region is ", r
+        # apply the mask to the image
+        mask = np.zeros(img_template.shape[:2], np.uint8)
+        mask[int(r[1]):int(r[1] + r[3]), int(r[0]):int(r[0] + r[2])] = 255
+        img_masked = cv2.bitwise_and(img_template, img_template, mask=mask)
+        cv2.imshow("Maksed Image", img_masked)
+        cv2.waitKey(0)
+
+        # Apply the Harris Detector to this region
+        img_mask_gray = cv2.cvtColor(img_masked, cv2.COLOR_BGR2GRAY)
+        img_mask_gray = np.float32(img_mask_gray)
+        dst = cv2.cornerHarris(img_mask_gray, 2, 3, 0.04)
+        dst = cv2.dilate(dst, None)
+        ret, dst = cv2.threshold(dst, 0.001 * dst.max(), 255, 0)
+        dst = np.uint8(dst)
+        img_masked[dst > 0.001 * dst.max()] = [0, 0, 255]
+
+        connectivity = 8
+        ret, labels, stats, centroids = cv2.connectedComponentsWithStats(dst, connectivity, cv2.CV_32S)
+        # ret, labels, stats, centroids = cv2.connectedComponentsWithStats(dst)
+        # define the criteria to stop and refine the corners
+        criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 100, 0.001)
+        corners = cv2.cornerSubPix(img_mask_gray, np.float32(centroids), (5, 5), (-1, -1), criteria)
+
+        # Threshold the data
+        idx_corners_use = np.where((corners[:, 0] > (r[0] + 5)) & (corners[:, 0] < (r[0] + r[2]- 5))  )
+        corners = corners[idx_corners_use]
+        centroids = centroids[idx_corners_use]
+
+        # res = np.hstack((centroids, corners))
+        res = centroids
+        res = np.int0(res)
+        img_masked[res[:, 1], res[:, 0]] = [0, 0, 255]
+        # img_masked[res[:, 3], res[:, 2]] = [0, 255, 0]
+
+        print "The points of the corner coordinates are ", centroids.shape
+        print "The points of the corners are ", corners.shape
+
+        cv2.imshow('dst', img_masked)
+        cv2.waitKey(0)
+
+        # print "The shape of the masked image is ", dst
+        # points = np.unravel_index(dst.argmax(), dst.shape)
+        # print "The points of the corner coordinate are ", points
+        # cv2.imwrite('dst.png', dst)
+
+    def CaptureMaskImg(self):
+        # Configure depth and color streams
+        pipeline = rs.pipeline()
+        config = rs.config()
+        config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
+        config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
+
+        # Start streaming
+        pipe_profile = pipeline.start(config)
+        curr_frame = 0
+
+        try:
+            while (curr_frame < 20):
+
+                # Get the color frame
+                frames = pipeline.wait_for_frames()
+
+                # Align the depth frame to color frame
+                # Get aligned frames for the color frame which is different from the color frame
+                align_to = rs.stream.color
+                align = rs.align(align_to)
+                aligned_frames = align.process(frames)
+                aligned_depth_frame = aligned_frames.get_depth_frame()  # Align_depth_frame is a 640x480 depth image
+                color_frame = aligned_frames.get_color_frame()
+
+                # Wait for a coherent pair of frames: depth and color
+                depth_frame = frames.get_depth_frame()
+
+                if not depth_frame or not color_frame:
+                    continue
+
+                # Intrinsic and extrinsic -- the imager of the color and depth frame is different -- this is important
+                depth_intrin = depth_frame.profile.as_video_stream_profile().intrinsics
+                color_intrin = color_frame.profile.as_video_stream_profile().intrinsics
+                depth_to_color_extrin = depth_frame.profile.get_extrinsics_to(color_frame.profile)
+
+                # Convert images to numpy arrays
+                depth_image = np.asanyarray(depth_frame.get_data())
+                color_image = np.asanyarray(color_frame.get_data())
+
+                # Visualize the realtime color image
+                # cv2.namedWindow('Align Example', cv2.WINDOW_AUTOSIZE)
+                # cv2.imshow('Align Example', color_image)
+                # cv2.waitKey(10)
+                #
+                # This is important since the first frame of the color image is dark while later it is better
+                curr_frame += 1
+                if (curr_frame == 10):
+                    cv2.imwrite('C:/Users/gm143/TumorCNC_brainlab/BTL/realsense/mask.png', color_image)
+
+        finally:
+            pipeline.stop()
 
 def timer(name, delay, repeat):
     print "Timer: " + name + " Started"
@@ -460,8 +635,12 @@ def timer(name, delay, repeat):
 if __name__ == "__main__":
 
     test = PNP()
-    test.VizPNP()
-
+    # test.CaptureMaskImg()
+    test.Scan5d()
+    # web = BTL_MultiProcess.webcamVideo()
+    # thread.start_new_thread(web.videoFunction, ())
+    # test.Scan3d()
+    # test.VizPNP()
     # intrin = test.CamIntrinsic()
     # rmat, tvec, mTRE = test.pnp()
     # test.Extract2DPoints()
@@ -473,7 +652,7 @@ if __name__ == "__main__":
     # test.PointSTA()
     # test.MoveOrigin()
     # test.ScanPoints()
-    # test.MovePoint(1.6, -1.6)
+    # test.MovePoint(0.4, 0)
     # move_x = 1
     # move_y = 1
     # test.Inch2Angle(move_x, move_y)
