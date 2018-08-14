@@ -23,6 +23,11 @@ import BTL_VIZ
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 from scipy.io import loadmat
+from Tkinter import *
+from tkFileDialog import askopenfilename
+import PIL
+from PIL import Image
+from PIL import ImageTk
 
 class PNP:
 
@@ -669,9 +674,9 @@ class PNP:
         for i in range(len(P_STEREO_2d)):
             img_use[P_STEREO_2d[i, 1], P_STEREO_2d[i, 0], :] = [255, 0, 0]
             print "Finish the %d point " % i
-        cv2.imshow('image use', img_use)
-        cv2.waitKey(0)
-        cv2.destroyWindow()
+        # cv2.imshow('image use', img_use)
+        # cv2.waitKey(500)
+        # cv2.destroyAllWindows()
 
         count = 0
         count_grid = 0
@@ -735,7 +740,7 @@ class PNP:
         # Viz the colorized point cloud
         Actor_grid = BTL_VIZ.ActorNpyColor(Pc_grid, Color_Vec_grid)
         Actor_plane = BTL_VIZ.ActorNpyColor(Pc, Color_Vec)
-        VizActor([Actor_grid, Actor_plane])
+        VizActor([Actor_grid])
         # vtk_Pc = npy2vtk(Pc_grid)
         # BTL_VIZ.VizVtk([vtk_Pc])
 
@@ -759,10 +764,10 @@ class PNP:
         print "The Stereo grid is ", P_Stereo_grid
 
         # Apply the transformation
-        R_final = np.asarray([[-0.99999, 0.0053327, 0.00040876],
-                   [0.0048848, 0.94176,  - 0.33624],
-                   [0.002178, 0.33623, 0.94178]])
-        t_final = np.asarray([-2.7387, -10.872, -0.15546])
+        R_final = np.asarray([[0.99924, -0.0060221, -0.03842],
+                               [0.0072509, -0.94176, 0.3362],
+                              [-0.038208, -0.33622, -0.94101]])
+        t_final = np.asarray([3.6437, 6.2995, 47.132])
 
         fixed = P_MTI_3d
         moving = P_Stereo_3d
@@ -806,7 +811,9 @@ class PNP:
         # print(P_line_v_tform)
 
         P_Stereo_grid_tform = np.multiply(P_Stereo_grid_tform, 0.3937)
-        print(P_Stereo_grid_tform)
+        print("The stereo grid transformation is ", P_Stereo_grid_tform)
+        P_Stereo_grid_tform[:,0] = -P_Stereo_grid_tform[:,0]
+        print("The stereo grid transformation is ", P_Stereo_grid_tform)
 
         # move the laser along this line
         return P_line_v_tform, P_Stereo_grid_tform
@@ -908,8 +915,8 @@ class PNP:
         color_image = self.CaptureMaskImg()
 
         # pick up two points
-        p_1 = np.asarray([355, 232])
-        p_2 = np.asarray([392, 266])
+        p_1 = np.asarray([345, 260])
+        p_2 = np.asarray([384, 224])
         p_line_x = np.linspace(p_1[0], p_2[0], 100)
         p_line_y = np.linspace(p_1[1], p_2[1], 100)
         P_line = np.zeros((len(p_line_x), 2))
@@ -1079,6 +1086,70 @@ class PNP:
         # vtk_Pc = npy2vtk(Pc_grid)
         # BTL_VIZ.VizVtk([vtk_Pc])
 
+    def GUIClickPoint(self):
+
+        # Design a userinterface to choose a point
+        root = Tk()
+        # setting up a tkinter canvas with scrollbars
+        frame = Frame(root, bd=2, relief=SUNKEN)
+        frame.grid_rowconfigure(0, weight=1)
+        frame.grid_columnconfigure(0, weight=1)
+        xscroll = Scrollbar(frame, orient=HORIZONTAL)
+        xscroll.grid(row=1, column=0, sticky=E + W)
+        yscroll = Scrollbar(frame)
+        yscroll.grid(row=0, column=1, sticky=N + S)
+        canvas = Canvas(frame, bd=0, xscrollcommand=xscroll.set, yscrollcommand=yscroll.set)
+        canvas.grid(row=0, column=0, sticky=N + S + E + W)
+        xscroll.config(command=canvas.xview)
+        yscroll.config(command=canvas.yview)
+        frame.pack(fill=BOTH, expand=1)
+
+        # adding the image
+        # File = askopenfilename(parent=root, initialdir="C:/", title='Choose an image.')
+        File = 'C:/Users/gm143/TumorCNC_brainlab/BTL/realsense/mask.png'
+        img = PIL.ImageTk.PhotoImage(PIL.Image.open(File))
+        # print "The image is ", img
+        canvas.create_image(0, 0, image=img, anchor="nw")
+        canvas.config(scrollregion=canvas.bbox(ALL))
+
+        img_show = cv2.imread(File)
+
+        # function to be called when mouse is clicked
+        P_centers = []
+        def printcoords(event):
+            # outputting x and y coords to console
+            # move the mouse to the region
+            cv2.circle(img_show, tuple([event.x, event.y]), 2, (0, 0, 255))
+            cv2.imshow('img_show', img_show)
+            cv2.waitKey(10)
+            P_centers.append([event.x, event.y])
+            print (event.x, event.y)
+
+        # mouseclick event
+        canvas.bind("<Button 1>", printcoords)
+        root.mainloop()
+
+        # Print the collected points
+        print(P_centers)
+
+        # Show the imaeg and a set of points
+
+        for points in P_centers:
+            print(points)
+            cv2.circle(img_show, tuple(points), 2, (0, 0, 255))
+        # cv2.circle(img_show, P_collect, 30, (0, 0, 0), 2)
+
+        P_use = np.zeros((len(P_centers), 2))
+        for index, elem in enumerate(P_centers):
+            P_use[index,:] = elem
+        print(P_use)
+
+        cv2.imshow('img_show', img_show)
+        cv2.waitKey(20000)
+        cv2.destroyAllWindows()
+
+        return P_use
+
 def Find3DCentroid(P_3D):
     # Find the 3D centroid of the points(npy)
     # Delta distances
@@ -1092,10 +1163,41 @@ def timer(name, delay, repeat):
         repeat -= 1
     print "Timer: " + name + " Completed"
 
+def PixelToRegion():
+    # input the pixel and return the region within the pixel centers
+    # input: a set of pixel coordinates
+    # output: a set of points related to the region -- list and numpy inside
+    p_center = np.asarray([325, 206])
+    radius = 10
+    img = cv2.imread('C:/Users/gm143/TumorCNC_brainlab/BTL/realsense/mask.png')
+    mask = np.zeros(img.shape, np.uint8)
+    print "image shape", img.shape
+    cv2.circle(mask, tuple([p_center[0], p_center[1]]), radius, 255, -1)
+    cv2.circle(img, tuple([p_center[0], p_center[1]]), radius, 255, -1)
+    where = np.where(mask == 255)
+    # where[0] -- y/h where[1] -- x/h
+    intensity_values_from_original = img[where[1], where[0]]        # x and y order
+
+    # print "The intensity coordinates are ", where[1]
+
+    centers = np.zeros((len(where[0]), 2))
+    centers[:, 0] = where[1]
+    centers[:, 1] = where[0]
+    print "The centers are ", centers
+
+    np.save('P_STEREO_2d.npy', centers)
+
+    # cv2.imshow('img_circle', img)
+    # cv2.waitKey(0)
+
+    return centers
+
 if __name__ == "__main__":
 
-    test = PNP()
-    test.GUIStereo()
+    # PixelToRegion()
+    # test = PNP()
+    # test.GUIClickPoint()
+    # test.GUIStereo()
     # test.Test_1()
     # test.MapMtiStereo()
     # test.GetPointStereo()
