@@ -66,6 +66,11 @@ class PNP:
         #     # Start streaming
         #     self.pipeline.start(self.config)
 
+    def ShowOneImg(self, path):
+        img = cv2.imread(path)
+        cv2.imshow('image', img)
+        cv2.waitKey(0)
+
     def LaserSpotDetect(self):
 
         # Define the ROI manually
@@ -220,7 +225,7 @@ class PNP:
             os.remove(filename)
 
         mtiScanSpan = [0.65, 0.65]        # The scanning region of the MTI
-        pointDistance = 0.01             # inches between each point on the scan
+        pointDistance = 0.02             # inches between each point on the scan
 
         # Move the center with x_angle == 0 and y_angle == 0
         print 'Set center of scan.'
@@ -237,7 +242,7 @@ class PNP:
             UserIn = Inch2Direction(0.05, 1.00, -1.00)
             UserIn_all = hene_UserIn + UserIn
         elif flag_hene == 'no':
-            UserIn = Inch2Direction(0.05, 0.95, -0.95)
+            UserIn = Inch2Direction(0.05, 0.98, -0.98)
             UserIn_all = UserIn
 
         flag = raw_input("Do you want to move to the predefined center (yes/no)?")
@@ -1011,15 +1016,20 @@ class PNP:
         # Get the centroids of the images
         Centroids = []
         foldername = 'C:/Users/gm143/TumorCNC_brainlab/BTL/BTL_data/ImgLaser/'
-        for i in range(3, 4289):
+
+        for i in range(3, 1053):
             img_name = foldername + 'P_' + str(i) + '.png'
-            print "Read image %s image", img_name
             color_image = cv2.imread(img_name)
             ROI_image = color_image[int(r[1]):int(r[1] + r[3]), int(r[0]):int(r[0] + r[2])]
             grey_image = cv2.cvtColor(ROI_image, cv2.COLOR_BGR2GRAY)
-            (minVal, maxVal, minLoc, maxLoc) = cv2.minMaxLoc(grey_image)
-            Spot_center = (maxLoc[0] + np.int(r[0]), maxLoc[1] + np.int(r[1]))
-            print("The spot center is ", Spot_center)
+            idx = np.int_(np.where(grey_image > 240))
+            target_val = np.int_([np.mean(idx[1]), np.mean(idx[0])])
+            Spot_center = (target_val[0] + np.int(r[0]), target_val[1] + np.int(r[1]))
+            print(i)
+            # print "The new spot center is ", Spot_center
+            # cv2.circle(color_image, tuple([Spot_center[0], Spot_center[1]]), 1, (255, 0, 0))
+            # cv2.imshow('image template', color_image)
+            # cv2.waitKey(500)
             Centroids.append(Spot_center)
 
         # list to numpy
@@ -1029,14 +1039,16 @@ class PNP:
             SpotCenters[i, :] = Centroids[i]
         SpotCenters = np.int_(SpotCenters)
         print "The spot centers are", SpotCenters
-        np.save('P_MTI_2d_Scanning.npy', SpotCenters)
+        flag_save = raw_input("Do you want to save the MTI 2d scanning data?")
+        if flag_save == 'yes':
+            np.save('P_MTI_2d_Scanning.npy', SpotCenters)
 
         # Show in the image
         for points in SpotCenters:
             print(points)
             cv2.circle(img, tuple(points), 1, (0, 0, 255))
-        cv2.imshow('image with spots', img)
-        cv2.waitKey(0)
+        # cv2.imshow('image with spots', img)
+        # cv2.waitKey(0)
 
 def Inch2Direction(unit_move, move_x, move_y):
 
@@ -1107,6 +1119,10 @@ def PixelToRegion(x_center_2d, y_center_2d):
 if __name__ == "__main__":
 
     test = PNP()
+    # test.ShowOneImg('C:/Users/gm143/TumorCNC_brainlab/BTL/realsense/mask.png')
+
+    # Test ScanPoints -- finished
+    # test.ScanPoints()
 
     # Test Capture multiple images
     # Capture multiple images at one time
@@ -1131,12 +1147,9 @@ if __name__ == "__main__":
     # test.MoveOrigin()
 
     # Test MovePoint -- finished
-    move_x = 0.65 # inches
-    move_y = -0.60 # inches
-    test.MovePoint(move_x, move_y)
-
-    # Test ScanPoints -- finished
-    # test.ScanPoints()
+    # move_x = 0.65                   # inches
+    # move_y = -0.60                  # inches
+    # test.MovePoint(move_x, move_y)
 
     # Test Extract2DPoints -- finished
     # test.LaserSpotCalibration2D()
