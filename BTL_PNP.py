@@ -32,8 +32,6 @@ import PIL
 from PIL import Image
 from PIL import ImageTk
 from controlLaser import ControlLaser
-# import BTL_GUI
-# from Tkinter import *
 
 class PNP:
 
@@ -301,10 +299,10 @@ class PNP:
         y_int_mean = np.mean(y_int)
         print "The mean interval of y is ", y_int_mean
 
-    def LaserSpotCalibration2D(self):
+    def LaserSpotCapture2D(self):
 
         # Extract the 2D coordinates from the images
-        path, dirs, files = next(os.walk("C:/Users/gm143/TumorCNC_brainlab/Data/ImgLaser"))
+        path, dirs, files = next(os.walk("C:/Users/gm143/TumorCNC_brainlab/BTL/BTL_data/ImgLaser/"))
         img = cv2.imread('C:/Users/gm143/TumorCNC_brainlab/Data/ImgLaser/P_1.png')
         # Select ROI
         r = cv2.selectROI(img)
@@ -315,27 +313,35 @@ class PNP:
         cv2.waitKey(0)
         print "The region is ", r
 
-        P_2D = np.zeros([  len(range(1,len(files)+1)), 2 ])
+        P_LaserCalibrate_2D = np.zeros([  len(range(1,len(files)+1)), 2 ])
         idx = 0
+
         for i in range(1, len(files) + 1):
-            img_name = 'C:/Users/gm143/TumorCNC_brainlab/Data/ImgLaser/' + 'P_' + str(i) + '.png'
-            img = cv2.imread(img_name)
-            print "The current image is ", img
-            ROI_image = img[int(r[1]):int(r[1] + r[3]), int(r[0]):int(r[0] + r[2])]
+            img_name = 'C:/Users/gm143/TumorCNC_brainlab/BTL/BTL_data/ImgLaser/' + 'P_' + str(i) + '.png'
+            color_img = cv2.imread(img_name)
+            ROI_image = color_img[int(r[1]):int(r[1] + r[3]), int(r[0]):int(r[0] + r[2])]
             grey_image = cv2.cvtColor(ROI_image, cv2.COLOR_BGR2GRAY)
-            (minVal, maxVal, minLoc, maxLoc) = cv2.minMaxLoc(grey_image)
-            Spot_center = (maxLoc[0] + np.int(r[0]), maxLoc[1] + np.int(r[1]))
-            P_2D[idx,:] = Spot_center
+            idx_center_region = np.int_(np.where(grey_image > 240))
+            target_val = np.int_([np.mean(idx_center_region[1]), np.mean(idx_center_region[0])])
+            Spot_center = (target_val[0] + np.int(r[0]), target_val[1] + np.int(r[1]))
+            # (minVal, maxVal, minLoc, maxLoc) = cv2.minMaxLoc(grey_image)
+            # Spot_center = (maxLoc[0] + np.int(r[0]), maxLoc[1] + np.int(r[1]))
+            P_LaserCalibrate_2D[idx, :] = Spot_center
+            # cv2.circle(color_img, tuple([Spot_center[0], Spot_center[1]]), 1, (255, 0, 0))
+            # cv2.imshow('image template', color_img)
+            # cv2.waitKey(500)
+            print "Finish the %s image " % i
+            print "The spotcenter is ", Spot_center
             idx += 1
 
-        print "The 2D coordinates are ", P_2D
-        print "The shape of the 2D coordinates are ", P_2D.shape
+        print "The 2D coordinates are ", P_LaserCalibrate_2D
+        print "The shape of the 2D coordinates are ", P_LaserCalibrate_2D.shape
 
         flag_save = raw_input("Save the 2D coordinates for all the points (yes/no)?")
         if flag_save == 'yes':
-            np.save('C:\Users\gm143\TumorCNC_brainlab\BTL\P_2D.npy', P_2D)
+            np.save('C:\Users\gm143\TumorCNC_brainlab\BTL\P_LaserCalibrate_2D.npy', P_LaserCalibrate_2D)
 
-    def CaptureMaskImg(self):
+    def CaptureTemplateImg(self):
 
         # Configure depth and color streams
         pipeline = rs.pipeline()
@@ -346,7 +352,7 @@ class PNP:
         # Start streaming
         pipe_profile = pipeline.start(config)
         curr_frame = 0
-        flag_save = raw_input("Do you want to save the image?")
+        flag_save = raw_input("Do you want to save the template image?")
 
         try:
             while (curr_frame < 20):
@@ -365,14 +371,70 @@ class PNP:
                 # This is important since the first frame of the color image is dark while later it is better
                 curr_frame += 1
                 if (curr_frame == 10) and flag_save == 'yes':
-                    cv2.imwrite('C:/Users/gm143/TumorCNC_brainlab/BTL/realsense/mask.png', color_image)
+                    cv2.imwrite('C:/Users/gm143/TumorCNC_brainlab/BTL/realsense/template.png', color_image)
         finally:
             pipeline.stop()
 
         return color_image
 
+    def GetCentroidFromImg(self):
+
+        # Get the centroids of the points from the images
+        # Define the ROI manually
+        img = cv2.imread('C:/Users/gm143/TumorCNC_brainlab/BTL/realsense/mask.png')
+        path, dirs, files = next(os.walk("C:/Users/gm143/TumorCNC_brainlab/BTL/Calibration_2D/"))
+        [height, width, dim] = img.shape
+        # Select ROI
+        r = cv2.selectROI(img)
+        # Crop image
+        print "Please choose the ROI"
+        imCrop = img[int(r[1]):int(r[1] + r[3]), int(r[0]):int(r[0] + r[2])]
+        # Display cropped image
+        cv2.imshow("Image", imCrop)
+        cv2.waitKey(0)
+        print "The rectangular region is ", r
+
+        # Get the centroids of the images
+        Centroids = []
+        foldername = 'C:/Users/gm143/TumorCNC_brainlab/BTL/Calibration_2D/'
+
+        for i in range(len(files)):
+            img_name = foldername + 'P_' + str(i) + '.png'
+            color_image = cv2.imread(img_name)
+            ROI_image = color_image[int(r[1]):int(r[1] + r[3]), int(r[0]):int(r[0] + r[2])]
+            grey_image = cv2.cvtColor(ROI_image, cv2.COLOR_BGR2GRAY)
+            idx = np.int_(np.where(grey_image > 240))
+            target_val = np.int_([np.mean(idx[1]), np.mean(idx[0])])
+            Spot_center = (target_val[0] + np.int(r[0]), target_val[1] + np.int(r[1]))
+            print(i)
+            print "The new spot center is ", Spot_center
+            cv2.circle(color_image, tuple([Spot_center[0], Spot_center[1]]), 1, (255, 0, 0))
+            cv2.imshow('image template', color_image)
+            cv2.waitKey(500)
+            Centroids.append(Spot_center)
+
+        # list to numpy
+        SpotCenters = np.zeros((len(Centroids), 2))
+        print "The Centroids is ", Centroids
+        for i in range(len(Centroids)):
+            SpotCenters[i, :] = Centroids[i]
+        SpotCenters = np.int_(SpotCenters)
+        print "The spot centers are", SpotCenters
+        flag_save = raw_input("Do you want to save the MTI 2d scanning data (capture from stereo camera)?")
+        if flag_save == 'yes':
+            np.save('P_MTI_Calibration_2D.npy', SpotCenters)
+
+        # Show in the image
+        for points in SpotCenters:
+            print(points)
+            cv2.circle(img, tuple(points), 1, (0, 0, 255))
+        # cv2.imshow('image with spots', img)
+        # cv2.waitKey(0)
+
     def Scan3d(self, MOVE_X, MOVE_Y):
 
+        # Function 1: Calibration
+        # Function 2: Scanning
         print "Move the MTI spot to specific positions"
 
         # Initialization
@@ -396,55 +458,96 @@ class PNP:
         y_c = 0
         hene_UserIn = Inch2Direction(0.05, -0.4, -0.1)
         print "The hene usein is ", hene_UserIn
+
+        # Define the predefine mti coordinates
+        mti_UserIn = Inch2Direction(0.05, 1.00, -1.00)
+        print "The mti userin is ", mti_UserIn
+
         # Define the initial position from the origin -- different from (0,0)
-        # UserIn = Inch2Direction(0.05, 1.00, -1.00)
-        UserIn_all = hene_UserIn # + UserIn
-        flag = raw_input("Do you want to move to the predefined center (yes/no)?")
-        if flag == 'yes':
+        flag_henemti = raw_input("If this is hene?")
+        if flag_henemti == 'yes':
+            UserIn_all = hene_UserIn
+        else:
+            UserIn_all = mti_UserIn
+
+        flag_predefine = raw_input("Do you want to move to the predefined center (yes/no/other)?")
+        if flag_predefine == 'yes':
             centerScan, z_dist, center_angles = self.CM.controlPoint_v1([x_c], [y_c], UserIn_all)
-        if flag == 'no':
+        if flag_predefine == 'no':
             centerScan, z_dist, center_angles = self.CM.controlPoint([x_c], [y_c])
 
+        # Set up the initial condition
         org_targetPoints = np.asarray([centerScan[0], centerScan[1], z_dist])
-
-        arrowMove = 0.05                        # This is self-define
+        arrowMove = 0.05                                # This is self-define
         P_MTI = np.zeros([len(MOVE_X), 3])
-
         print "The current MOVE_X is ", MOVE_X
         print "The current MOVE_Y is ", MOVE_Y
 
-        for i in range(len(MOVE_X)):
+        # check if we want to capture the 2D images at the same time
+        flag_2d = raw_input("Do you want to capture the 2D calibration images at the same time?")
 
-            move_x = MOVE_X[i]                  # This is self-define
-            move_y = MOVE_Y[i]
+        # Begin the Loop to move to each input coordinate
+        try:
+            if flag_2d == 'yes':
+                cap = cv2.VideoCapture(1)
 
-            # centerScan[0] = centerScan[0] + move_x
-            # centerScan[1] = centerScan[1] + move_y
+            for i in range(len(MOVE_X)):
 
-            centerScan[0] = org_targetPoints[0] + move_x
-            centerScan[1] = org_targetPoints[1] + move_y
+                move_x = MOVE_X[i]
+                move_y = MOVE_Y[i]
 
-            # print('The centerScan is', centerScan)
-            [x_cent_ang, y_cent_ang] = self.CS.angular_position(np.array([centerScan[0]]),
-                                                                np.array([centerScan[1]]),
-                                                                np.array([z_dist]))             # recalculate the center
-            self.CD.point_move(x_cent_ang, y_cent_ang, 0.005)                                   # move to the new point
-            z_dist = float(self.CD.point_measure(0.1))                                          # measure a new distance (this returns a voltage)
-            z_dist2 = (z_dist / 0.04 + 175) * 0.03937007874                                     # convert the voltage to a distance
-            targetPoints = self.CS.xy_position(x_cent_ang, y_cent_ang, z_dist2)                 # figure out the actual point in space we are at
-            z_dist = targetPoints[0, 2]                                                         # return that distance
-            print "The current target points are ", z_dist
-            P_MTI[i, :] = np.asarray([move_x, move_y, z_dist])
+                centerScan[0] = org_targetPoints[0] + move_x
+                centerScan[1] = org_targetPoints[1] + move_y
 
+                print "The move_x is ", move_x
+                print "The move_y is ", move_y
+                print "The org_centerScan is ", org_targetPoints
+                print "The centerScan is ", centerScan
+                print "The z dist is ", z_dist
+
+                [x_cent_ang, y_cent_ang] = self.CS.angular_position(np.array([centerScan[0]]),
+                                                                    np.array([centerScan[1]]),
+                                                                    np.array([z_dist]))             # recalculate the center
+                self.CD.point_move(x_cent_ang, y_cent_ang, 0.005)                                   # move to the new point
+
+                if flag_2d == 'yes':
+                    count = 0
+                    # collect the data
+                    while(count < 15):
+                        ret, frames = cap.read()
+                        if count > 10:
+                            img_name = 'C:/Users/gm143/TumorCNC_brainlab/BTL/Calibration_2D/P_' + str(i) + '.png'
+                            cv2.imwrite(img_name, frames)
+                            print "Save the %d image" % i
+                        count += 1
+
+                z_dist = float(self.CD.point_measure(0.1))                                          # measure a new distance (this returns a voltage)
+                z_dist2 = (z_dist / 0.04 + 175) * 0.03937007874                                     # convert the voltage to a distance
+                targetPoints = self.CS.xy_position(x_cent_ang, y_cent_ang, z_dist2)                 # figure out the actual point in space we are
+                z_dist = targetPoints[0, 2]                                                         # return that distance
+                print "The current target points are ", z_dist
+                P_MTI[i, :] = np.asarray([move_x, move_y, z_dist])
+        finally:
+            if flag_2d == 'yes':
+                cap.release()
+
+        # Save MTI calibration 3D
         print "The points of MTI are ", P_MTI
-        flag_save = raw_input("Do you want to save the MTI target points?")
-        if flag_save == 'yes':
-            np.save('P_MIT_target.npy', P_MTI)
+        flag_save_3d = raw_input("Do you want to save the MTI target points?")
+        if flag_save_3d == 'yes':
+            np.save('P_MIT_target_3d.npy', P_MTI)
+
+        # Save MTI calibration 2D
+        flag_save_2d = raw_input("Do you want to save MTI scanning 2d?")
+        if flag_save_2d == 'yes':
+            self.GetCentroidFromImg()
 
     def Scan5d(self):
 
+        self.CaptureTemplateImg()
+
         # Read the template image
-        img_template = cv2.imread('C:/Users/gm143/TumorCNC_brainlab/BTL/realsense/mask.png')
+        img_template = cv2.imread('C:/Users/gm143/TumorCNC_brainlab/BTL/realsense/template.png')
         [h, w, _] = img_template.shape
         print "The height of the image is ", h
         print "The width of the image is ", w
@@ -527,7 +630,7 @@ class PNP:
 
         flag_savenpy = raw_input("Do you want to save the point data ?")
         if flag_savenpy == 'yes':
-            np.save('P_STEREO_2d.npy', corners)
+            np.save('P_STEREO_Calibration_2D.npy', corners)
 
     def MapMtiStereo(self):
 
@@ -599,7 +702,7 @@ class PNP:
     def StereoROITarget(self):
 
         # Capture a realtime image
-        color_image = self.CaptureMaskImg()
+        color_image = self.CaptureTemplateImg()
 
         # Get the 2D coordinates for the target points
         # P_target_2D = self.MakeRandomLine()
@@ -729,7 +832,7 @@ class PNP:
 
     def MakeRandomLine(self):
 
-        color_image = self.CaptureMaskImg()
+        color_image = self.CaptureTemplateImg()
 
         # Make a random line
         # pick up two points
@@ -816,6 +919,140 @@ class PNP:
         cv2.destroyAllWindows()
 
         return P_target_2D
+
+    def ControlPanel(self):
+        a = 1
+        # CP = BTL_GUI.GUI_Wes(Tk())
+        # msg = "tickle"
+        # CP.co2Callback(msg)
+
+        # Turn on the Hene
+        # flag_hene = raw_input("Do you want to turn on the HENE?")
+        # if flag_hene == "yes":
+        #     self.CL.write_message("hene on")
+        # else:
+        #     self.CL.write_message("hene off")
+        #
+        # # Turn on the MTI
+        # flag_mti = raw_input("Do you want to turn on the MTI?")
+        # if flag_mti == 'yes':
+        #     self.CL.write_message("mti on")
+        # else:
+        #     self.CL.write_message("mti off")
+        #
+        # # Turn on the laser
+        # flag_co2 = raw_input("Which operation for the CO2 laser?")
+        #
+        # try:
+        #     if flag_co2 == 't':
+        #         fullMsg = 't'
+        #     elif flag_co2 == 'off':
+        #         fullMsg = "off"
+        #     elif flag_co2 == 'shoot':
+        #         print "The laser is shooting -- be careful"
+        #         fullMsg = 't'
+        #         self.CLco2.write_message(fullMsg)
+        #         fullMsg = 'p,100,1000'
+        #         self.CLco2.write_message(fullMsg)
+        #     else:
+        #         fullMsg = "off"
+        # finally:
+        #     fullMsg = "off"
+        #     self.CLco2.write_message(fullMsg)
+        #     print "The laser is off"
+
+def CameraConfig():
+    # return the camera configuration
+    # Configure depth and color streams
+    pipeline = rs.pipeline()
+    config = rs.config()
+    config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
+    config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
+    # Start streaming
+    pipe_profile = pipeline.start(config)
+    return pipeline
+
+def CheckboardMTI3D():
+    # return the coordinates of the chessboard values
+    # Based on the results of the grid points
+    a = 1
+    line_x = np.linspace(0.0, -1.8, num=7)
+    line_y = np.linspace(0.0, -1.8, num=7)
+    MOVE_X, MOVE_Y = np.meshgrid(line_x, line_y)
+    Points_2d = np.zeros((len(MOVE_X[:].ravel()), 2))
+    Points_2d[:,0] = MOVE_X.ravel()
+    Points_2d[:,1] = MOVE_Y.ravel()
+    # print "The MOVE_X is", MOVE_X
+    # print "The MOVE_Y is", MOVE_Y
+    # print "The points are ", Points_2d
+
+    return MOVE_X.ravel(), MOVE_Y.ravel()
+
+def Inch2Direction(unit_move, move_x, move_y):
+
+    # move_x: inches on x axis
+    # mvoe_y: inches on y axis
+    # UserIn: inches on z axis
+
+    # unit_move = 0.05    # how many steps to be moved
+    steps_x = np.int(move_x / unit_move)
+    steps_y = move_y / unit_move
+    sign_x = np.int(np.sign([steps_x]))
+    sign_y = np.int(np.sign([steps_y]))
+    UserIn = []
+
+    if sign_x == -1:  # negative
+        print "test"
+        for i in range(np.int(np.absolute(steps_x))):
+            UserIn.append('a')
+    if sign_x == 1:   # positive
+        for i in range(np.int(np.absolute(steps_x))):
+            UserIn.append('d')
+    if sign_y == -1:
+        for i in range(np.int(np.absolute(steps_y))):
+            UserIn.append('s')
+    if sign_y == 1:
+        for i in range(np.int(np.absolute(steps_y))):
+            UserIn.append('w')
+    return UserIn
+
+def timer(name, delay, repeat):
+    print "Timer: " + name + " Started"
+    while repeat > 0:
+        time.sleep(delay)
+        print name + ": " + str(time.ctime(time.time()))
+        repeat -= 1
+    print "Timer: " + name + " Completed"
+
+def PixelToRegion(x_center_2d, y_center_2d):
+    # input the pixel and return the region within the pixel centers
+    # input: a set of pixel coordinates
+    # output: a set of points related to the region -- list and numpy inside
+    p_center = np.asarray([x_center_2d, y_center_2d])
+    radius = 2
+    img = cv2.imread('C:/Users/gm143/TumorCNC_brainlab/BTL/realsense/mask.png')
+    mask = np.zeros(img.shape, np.uint8)
+    print "image shape", img.shape
+    cv2.circle(mask, tuple([p_center[0], p_center[1]]), radius, 255, -1)
+    cv2.circle(img, tuple([p_center[0], p_center[1]]), radius, 255, -1)
+    where = np.where(mask == 255)
+    # where[0] -- y/h where[1] -- x/h
+    intensity_values_from_original = img[where[1], where[0]]        # x and y order
+
+    # print "The intensity coordinates are ", where[1]
+
+    centers = np.zeros((len(where[0]), 2))
+    centers[:, 0] = where[1]
+    centers[:, 1] = where[0]
+    centers = np.int_(centers)
+    print "The centers are ", centers
+    print "The shape of the center region is ", centers.shape
+
+    # np.save('P_STEREO_2d.npy', centers)
+    # cv2.imshow('img_circle', img)
+    # cv2.waitKey(0)
+
+    return centers
 
     # def pnp(self):
         #
@@ -955,171 +1192,17 @@ class PNP:
     #     Actor_plane_tform = BTL_VIZ.ActorNpyColor(P_STEREO_ROI_tform, P_STEREO_ROI_Color)
     #     VizActor([Actor_plane, Actor_plane_tform, Actor_MTI])
 
-    def ControlPanel(self):
-
-        a = 1
-        # CP = BTL_GUI.GUI_Wes(Tk())
-        # msg = "tickle"
-        # CP.co2Callback(msg)
-
-        # Turn on the Hene
-        # flag_hene = raw_input("Do you want to turn on the HENE?")
-        # if flag_hene == "yes":
-        #     self.CL.write_message("hene on")
-        # else:
-        #     self.CL.write_message("hene off")
-        #
-        # # Turn on the MTI
-        # flag_mti = raw_input("Do you want to turn on the MTI?")
-        # if flag_mti == 'yes':
-        #     self.CL.write_message("mti on")
-        # else:
-        #     self.CL.write_message("mti off")
-        #
-        # # Turn on the laser
-        # flag_co2 = raw_input("Which operation for the CO2 laser?")
-        #
-        # try:
-        #     if flag_co2 == 't':
-        #         fullMsg = 't'
-        #     elif flag_co2 == 'off':
-        #         fullMsg = "off"
-        #     elif flag_co2 == 'shoot':
-        #         print "The laser is shooting -- be careful"
-        #         fullMsg = 't'
-        #         self.CLco2.write_message(fullMsg)
-        #         fullMsg = 'p,100,1000'
-        #         self.CLco2.write_message(fullMsg)
-        #     else:
-        #         fullMsg = "off"
-        # finally:
-        #     fullMsg = "off"
-        #     self.CLco2.write_message(fullMsg)
-        #     print "The laser is off"
-
-    def GetCentroidFromImg(self):
-
-        # Get the centroids of the points from the images
-        # Define the ROI manually
-        img = cv2.imread('C:/Users/gm143/TumorCNC_brainlab/BTL/realsense/mask.png')
-        [height, width, dim] = img.shape
-        # Select ROI
-        r = cv2.selectROI(img)
-        # Crop image
-        print "Please choose the ROI"
-        imCrop = img[int(r[1]):int(r[1] + r[3]), int(r[0]):int(r[0] + r[2])]
-        # Display cropped image
-        cv2.imshow("Image", imCrop)
-        cv2.waitKey(0)
-        print "The rectangular region is ", r
-
-        # Get the centroids of the images
-        Centroids = []
-        foldername = 'C:/Users/gm143/TumorCNC_brainlab/BTL/BTL_data/ImgLaser/'
-
-        for i in range(3, 1053):
-            img_name = foldername + 'P_' + str(i) + '.png'
-            color_image = cv2.imread(img_name)
-            ROI_image = color_image[int(r[1]):int(r[1] + r[3]), int(r[0]):int(r[0] + r[2])]
-            grey_image = cv2.cvtColor(ROI_image, cv2.COLOR_BGR2GRAY)
-            idx = np.int_(np.where(grey_image > 240))
-            target_val = np.int_([np.mean(idx[1]), np.mean(idx[0])])
-            Spot_center = (target_val[0] + np.int(r[0]), target_val[1] + np.int(r[1]))
-            print(i)
-            # print "The new spot center is ", Spot_center
-            # cv2.circle(color_image, tuple([Spot_center[0], Spot_center[1]]), 1, (255, 0, 0))
-            # cv2.imshow('image template', color_image)
-            # cv2.waitKey(500)
-            Centroids.append(Spot_center)
-
-        # list to numpy
-        SpotCenters = np.zeros((len(Centroids), 2))
-        print "The Centroids is ", Centroids
-        for i in range(len(Centroids)):
-            SpotCenters[i, :] = Centroids[i]
-        SpotCenters = np.int_(SpotCenters)
-        print "The spot centers are", SpotCenters
-        flag_save = raw_input("Do you want to save the MTI 2d scanning data?")
-        if flag_save == 'yes':
-            np.save('P_MTI_2d_Scanning.npy', SpotCenters)
-
-        # Show in the image
-        for points in SpotCenters:
-            print(points)
-            cv2.circle(img, tuple(points), 1, (0, 0, 255))
-        # cv2.imshow('image with spots', img)
-        # cv2.waitKey(0)
-
-def Inch2Direction(unit_move, move_x, move_y):
-
-    # move_x: inches on x axis
-    # mvoe_y: inches on y axis
-    # UserIn: inches on z axis
-
-    # unit_move = 0.05    # how many steps to be moved
-    steps_x = np.int(move_x / unit_move)
-    steps_y = move_y / unit_move
-    sign_x = np.int(np.sign([steps_x]))
-    sign_y = np.int(np.sign([steps_y]))
-    UserIn = []
-
-    if sign_x == -1:  # negative
-        print "test"
-        for i in range(np.int(np.absolute(steps_x))):
-            UserIn.append('a')
-    if sign_x == 1:   # positive
-        for i in range(np.int(np.absolute(steps_x))):
-            UserIn.append('d')
-    if sign_y == -1:
-        for i in range(np.int(np.absolute(steps_y))):
-            UserIn.append('s')
-    if sign_y == 1:
-        for i in range(np.int(np.absolute(steps_y))):
-            UserIn.append('w')
-    return UserIn
-
-def timer(name, delay, repeat):
-    print "Timer: " + name + " Started"
-    while repeat > 0:
-        time.sleep(delay)
-        print name + ": " + str(time.ctime(time.time()))
-        repeat -= 1
-    print "Timer: " + name + " Completed"
-
-def PixelToRegion(x_center_2d, y_center_2d):
-    # input the pixel and return the region within the pixel centers
-    # input: a set of pixel coordinates
-    # output: a set of points related to the region -- list and numpy inside
-    p_center = np.asarray([x_center_2d, y_center_2d])
-    radius = 2
-    img = cv2.imread('C:/Users/gm143/TumorCNC_brainlab/BTL/realsense/mask.png')
-    mask = np.zeros(img.shape, np.uint8)
-    print "image shape", img.shape
-    cv2.circle(mask, tuple([p_center[0], p_center[1]]), radius, 255, -1)
-    cv2.circle(img, tuple([p_center[0], p_center[1]]), radius, 255, -1)
-    where = np.where(mask == 255)
-    # where[0] -- y/h where[1] -- x/h
-    intensity_values_from_original = img[where[1], where[0]]        # x and y order
-
-    # print "The intensity coordinates are ", where[1]
-
-    centers = np.zeros((len(where[0]), 2))
-    centers[:, 0] = where[1]
-    centers[:, 1] = where[0]
-    centers = np.int_(centers)
-    print "The centers are ", centers
-    print "The shape of the center region is ", centers.shape
-
-    # np.save('P_STEREO_2d.npy', centers)
-    # cv2.imshow('img_circle', img)
-    # cv2.waitKey(0)
-
-    return centers
-
 if __name__ == "__main__":
 
     test = PNP()
+
+    # Test Scan5d -- finished
+    test.Scan5d()
+
     # test.ShowOneImg('C:/Users/gm143/TumorCNC_brainlab/BTL/realsense/mask.png')
+
+    # MOVE_X, MOVE_Y = CheckboardMTI3D()
+    # test.Scan3d(MOVE_X, MOVE_Y)
 
     # Test ScanPoints -- finished
     # test.ScanPoints()
@@ -1152,10 +1235,10 @@ if __name__ == "__main__":
     # test.MovePoint(move_x, move_y)
 
     # Test Extract2DPoints -- finished
-    # test.LaserSpotCalibration2D()
+    # test.LaserSpotCapture2D()
 
-    # Test CaptureMaskImg -- finished
-    # test.CaptureMaskImg()
+    # Test CaptureTemplateImg -- finished
+    # test.CaptureTemplateImg()
 
     # Test MapMtiStereo
     # test.MapMtiStereo()
