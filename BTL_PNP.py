@@ -212,9 +212,20 @@ class PNP:
         x_c = 0
         y_c = 0
 
-        unit_move = 0.05
+        unit_move = 0.01
         UserIn = Inch2Direction(unit_move, move_x, move_y)
+
+        flag_hene = raw_input("Do you want to include hene? (yes/no)")
+        if flag_hene == 'yes':
+            UserIn_hene = Inch2Direction(0.01, -0.40, -0.11)
+            UserIn = UserIn_hene + UserIn
         centerScan, z_dist, center_angles = self.CM.controlPoint_v1([x_c], [y_c], UserIn)
+
+    def MoveFromAngle(self, x_angle, y_angle):
+
+        x_cent_ang = x_angle  # np.array( -1.0381408);
+        y_cent_ang = y_angle  # np.array(-1.168893);
+        self.CD.point_move(x_cent_ang, y_cent_ang, .005)
 
     def ScanPoints(self):
 
@@ -222,7 +233,7 @@ class PNP:
         if os.path.exists(filename):
             os.remove(filename)
 
-        mtiScanSpan = [0.65, 0.65]        # The scanning region of the MTI
+        mtiScanSpan = [1.3, 1.3]        # The scanning region of the MTI
         pointDistance = 0.02             # inches between each point on the scan
 
         # Move the center with x_angle == 0 and y_angle == 0
@@ -254,6 +265,8 @@ class PNP:
         print 'Set scan box location and size.'
         centerScan, scanSpread, z_dist = self.CM.controlScanBox(centerScan, z_dist, mtiScanSpan, 'box', 'vertical', '2')
         scanCenter = centerScan
+        print "The centerScan is", centerScan
+        print "The scanSpread is", scanSpread
 
         # z_dist2 = z_dist
         pointsPerX = scanSpread[0] / pointDistance
@@ -263,13 +276,13 @@ class PNP:
 
         # print 'Performing initial raster scan.'
         print "The z_dist is ", z_dist
-        target_points, filtered_points = self.ST.raster_scan_v1(centerScan, scanSpread, z_dist, pointsPerX, pointsPerY, 'Scan', 'ScanAngles')
+        target_points, filtered_points, x_angles, y_angles = self.ST.raster_scan_v1(centerScan, scanSpread, z_dist, pointsPerX, pointsPerY, 'Scan', 'ScanAngles')
         self.ST.plot_scan(target_points, 1)
         self.PointSTA(target_points)
 
         flag_save = raw_input("Do you want to save the scanning data (yes/no)?")
         if flag_save == 'yes':
-            np.save('C:/Users/gm143/TumorCNC_brainlab/BTL/P_MTI_3d_Scanning.npy', target_points)
+            np.save('C:/Users/gm143/TumorCNC_brainlab/BTL/P_MTI_Calibration_interpolation_3D.npy', target_points)
 
     def PointSTA(self, Points):
 
@@ -381,8 +394,8 @@ class PNP:
 
         # Get the centroids of the points from the images
         # Define the ROI manually
-        img = cv2.imread('C:/Users/gm143/TumorCNC_brainlab/BTL/realsense/mask.png')
-        path, dirs, files = next(os.walk("C:/Users/gm143/TumorCNC_brainlab/BTL/Calibration_2D/"))
+        img = cv2.imread('C:/Users/gm143/TumorCNC_brainlab/BTL/realsense/template.png')
+        path, dirs, files = next(os.walk("C:/Users/gm143/TumorCNC_brainlab/BTL/BTL_data/ImgLaser/"))
         [height, width, dim] = img.shape
         # Select ROI
         r = cv2.selectROI(img)
@@ -396,9 +409,9 @@ class PNP:
 
         # Get the centroids of the images
         Centroids = []
-        foldername = 'C:/Users/gm143/TumorCNC_brainlab/BTL/Calibration_2D/'
+        foldername = 'C:/Users/gm143/TumorCNC_brainlab/BTL/BTL_data/ImgLaser/'
 
-        for i in range(len(files)):
+        for i in range(3, len(files)):
             img_name = foldername + 'P_' + str(i) + '.png'
             color_image = cv2.imread(img_name)
             ROI_image = color_image[int(r[1]):int(r[1] + r[3]), int(r[0]):int(r[0] + r[2])]
@@ -408,9 +421,9 @@ class PNP:
             Spot_center = (target_val[0] + np.int(r[0]), target_val[1] + np.int(r[1]))
             print(i)
             print "The new spot center is ", Spot_center
-            cv2.circle(color_image, tuple([Spot_center[0], Spot_center[1]]), 1, (255, 0, 0))
-            cv2.imshow('image template', color_image)
-            cv2.waitKey(500)
+            # cv2.circle(color_image, tuple([Spot_center[0], Spot_center[1]]), 1, (255, 0, 0))
+            # cv2.imshow('image template', color_image)
+            # cv2.waitKey(500)
             Centroids.append(Spot_center)
 
         # list to numpy
@@ -422,7 +435,7 @@ class PNP:
         print "The spot centers are", SpotCenters
         flag_save = raw_input("Do you want to save the MTI 2d scanning data (capture from stereo camera)?")
         if flag_save == 'yes':
-            np.save('P_MTI_Calibration_2D.npy', SpotCenters)
+            np.save('P_MTI_Calibration_interpolation_2D.npy', SpotCenters)
 
         # Show in the image
         for points in SpotCenters:
@@ -480,6 +493,7 @@ class PNP:
         org_targetPoints = np.asarray([centerScan[0], centerScan[1], z_dist])
         arrowMove = 0.05                                # This is self-define
         P_MTI = np.zeros([len(MOVE_X), 3])
+        print "The org_centerScan is ", org_targetPoints
         print "The current MOVE_X is ", MOVE_X
         print "The current MOVE_Y is ", MOVE_Y
 
@@ -565,7 +579,7 @@ class PNP:
         mask = np.zeros(img_template.shape[:2], np.uint8)
         mask[int(r[1]):int(r[1] + r[3]), int(r[0]):int(r[0] + r[2])] = 255
         img_masked = cv2.bitwise_and(img_template, img_template, mask = mask)
-        cv2.imshow("Maksed Image", img_masked)
+        cv2.imshow("Template Image", img_masked)
         cv2.waitKey(0)
 
         # Apply the Harris Detector to this region
@@ -630,7 +644,7 @@ class PNP:
 
         flag_savenpy = raw_input("Do you want to save the point data ?")
         if flag_savenpy == 'yes':
-            np.save('P_STEREO_Calibration_2D.npy', corners)
+            np.save('P_STEREO_Calibration_2D.npy', res)
 
     def MapMtiStereo(self):
 
@@ -652,10 +666,11 @@ class PNP:
         print "The Stereo target is ", P_Stereo_target
 
         # Apply the transformation
-        R_final = np.asarray([[0.99924, -0.0060221, -0.03842],
-                              [0.0072509, -0.94176, 0.3362],
-                              [-0.038208, -0.33622, -0.94101]])
-        t_final = np.asarray([3.6437, 6.2995, 47.132])
+        raw_input("Please update the matrix")
+        R_final = np.asarray([[0.99897, -0.0018348, -0.045348],
+                              [0.013816, -0.93947, 0.34236],
+                              [-0.043231, -0.34263, -0.93848]])
+        t_final = np.asarray([3.7108, 6.2761, 47.273])
 
         fixed = P_MTI_3d
         moving = P_Stereo_3d
@@ -705,9 +720,11 @@ class PNP:
         color_image = self.CaptureTemplateImg()
 
         # Get the 2D coordinates for the target points
-        # P_target_2D = self.MakeRandomLine()
-        P_target_2D = PixelToRegion(345, 206)
+        P_target_2D = self.MakeRandomLine()
+        # P_target_2D = PixelToRegion(345, 206)
         # P_target_2D = self.GUIClickPoint()
+        # P_target_2D = np.load('C:\Users\gm143\TumorCNC_brainlab\BTL\P_STEREO_Calibration_2D.npy')
+        # P_target_2D = np.int_(P_target_2D)
         # print "The shape of P_target_2D is", P_target_2D.shape
 
         # Configure depth and color streams
@@ -737,7 +754,7 @@ class PNP:
         finally:
             pipeline.stop()
 
-        img_template = cv2.imread('C:/Users/gm143/TumorCNC_brainlab/BTL/realsense/mask.png')
+        img_template = cv2.imread('C:/Users/gm143/TumorCNC_brainlab/BTL/realsense/template.png')
         r = (292.0, 173.0, 144.0, 142.0)
 
         # Determine the region of the target region
@@ -961,6 +978,213 @@ class PNP:
         #     self.CLco2.write_message(fullMsg)
         #     print "The laser is off"
 
+    def HarrisDetector(self):
+
+        # Detect the regions for PNP problems
+        # return the 2D coordinates for the grid points
+        # Choose which 3D points?
+
+        self.CaptureTemplateImg()
+
+        # Read the template image
+        img_template = cv2.imread('C:/Users/gm143/TumorCNC_brainlab/BTL/realsense/template.png')
+        [h, w, _] = img_template.shape
+        print "The height of the image is ", h
+        print "The width of the image is ", w
+
+        # Define the ROI
+        # r = cv2.selectROI(img_template)
+        r = (292.0, 173.0, 144.0, 142.0)
+        # imCrop = img_template[int(r[1]):int(r[1] + r[3]), int(r[0]):int(r[0] + r[2])]
+
+        mask = np.zeros(img_template.shape[:2], np.uint8)
+        mask[int(r[1]):int(r[1] + r[3]), int(r[0]):int(r[0] + r[2])] = 255
+        img_masked = cv2.bitwise_and(img_template, img_template, mask=mask)
+        # cv2.imshow("Template Image", img_masked)
+        # cv2.waitKey(0)
+
+        # Apply the Harris Detector to this region
+        img_mask_gray = cv2.cvtColor(img_masked, cv2.COLOR_BGR2GRAY)
+        img_mask_gray = np.float32(img_mask_gray)
+        dst = cv2.cornerHarris(img_mask_gray, 2, 3, 0.04)
+        dst = cv2.dilate(dst, None)
+        ret, dst = cv2.threshold(dst, 0.001 * dst.max(), 255, 0)
+        dst = np.uint8(dst)
+        img_masked[dst > 0.001 * dst.max()] = [0, 0, 255]
+
+        cv2.imshow('dst', img_masked)
+        cv2.waitKey(0)
+
+        corners_org_y, corners_org_x = np.where(dst > 0.001 * dst.max())
+        print "The corners org are -- x ", corners_org_x.shape
+        print "The corners org are -- y ", corners_org_y.shape
+
+        corners_org = np.zeros([len(corners_org_x), 2])
+        corners_org[:, 0] = corners_org_x
+        corners_org[:, 1] = corners_org_y
+
+        # corners_org = np.hstack([corners_org_x.transpose(), corners_org_y.transpose()])
+        print "The corners org is ", corners_org
+
+        connectivity = 8
+        ret, labels, stats, centroids = cv2.connectedComponentsWithStats(dst, connectivity, cv2.CV_32S)
+        # print "The centroids are ", centroids
+        # ret, labels, stats, centroids = cv2.connectedComponentsWithStats(dst)
+        # define the criteria to stop and refine the corners
+        criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 100, 0.001)
+        corners = cv2.cornerSubPix(img_mask_gray, np.float32(centroids), (5, 5), (-1, -1), criteria)
+
+        # use the original points or the detectors
+        flag_detector = raw_input("Do you want to use the original detectors (yes/no)?")
+        if flag_detector == 'yes':
+            corners = corners_org
+        # corners = corners_org
+
+        # Threshold the data
+        idx_corners_use = np.where((corners[:, 0] > (r[0] + 5)) & (corners[:, 0] < (r[0] + r[2] - 5)))
+        print "The index of the new data is ", idx_corners_use
+        corners = corners[idx_corners_use]
+        # centroids = centroids[idx_corners_use]
+        # remove the first value -- the noisy data -- it depends on the image
+        corners = corners[1:]
+        print "The new corners is ", corners.shape
+
+        # res = np.hstack((centroids, corners))
+        # res = centroids
+        res = np.int0(corners)
+        res = np.int0(res)
+        img_masked[res[:, 1], res[:, 0]] = [255, 0, 0]
+        print "The res is ", res.shape
+
+        # Test the new image
+        img_new = np.zeros((h, w, 3), np.uint8)
+        img_new[res[:, 1], res[:, 0]] = [255, 0, 0]
+        cv2.imshow('image template', img_new)
+        cv2.waitKey(0)
+
+        # img_masked[res[:, 3], res[:, 2]] = [0, 255, 0]
+        # print "The points of the corner coordinates are ", centroids.shape
+        # print "The points of the corners are ", corners
+
+        flag_savenpy = raw_input("Do you want to save the point data ?")
+        if flag_savenpy == 'yes':
+            np.save('P_STEREO_Calibration_2D_Harris.npy', res)
+
+    def pnp(self):
+
+        # Configure the realsense device
+        pipeline = rs.pipeline()
+        config = rs.config()
+        config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
+        config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
+        pipeline.start(config)
+
+        # pnp operation to calculate the result
+        # Intrinsic parameters
+        frames = pipeline.wait_for_frames()
+        color_frame = frames.get_color_frame()
+        color_intrin = color_frame.profile.as_video_stream_profile().intrinsics
+        print "The current color intrinsic parameter is ", color_intrin
+
+        # Read Image
+        im = cv2.imread("C:/Users/gm143/TumorCNC_brainlab/BTL/realsense/template.png")
+        size = im.shape
+
+        # 2D image points. If you change the image, you need to change vector
+        image_points = np.load('C:\Users\gm143\TumorCNC_brainlab\BTL\P_STEREO_Calibration_2D_Harris.npy')
+        image_points = np.array(image_points, dtype="double")
+
+        # 3D model points.
+        model_points = np.load('C:\Users\gm143\TumorCNC_brainlab\BTL\P_MIT_Calibration_3D_Harris.npy')
+        model_points[:, 0] = -model_points[:, 0]
+        model_points[:, 1] = -model_points[:, 1]
+
+        model_points[:, 0] = model_points[:, 0] - min(model_points[:, 0])
+        model_points[:, 1] = model_points[:, 1] - min(model_points[:, 1])
+        model_points[:, 2] = model_points[:, 2] - min(model_points[:, 2])
+
+        print "The model points are", model_points
+
+        # Camera internals
+        camera_matrix = np.array(
+            [[619.846, 0, 312.14],
+             [0, 619.846, 238.018],
+             [0, 0, 1]], dtype="double")
+
+        print "Camera Matrix :\n {0}".format(camera_matrix)
+
+        dist_coeffs = np.zeros((4, 1))  # Assuming no lens distortion
+        (success, rotation_vector, translation_vector) = cv2.solvePnP(model_points, image_points, camera_matrix,
+                                                                      dist_coeffs, flags=cv2.SOLVEPNP_ITERATIVE)
+
+        print "Rotation Vector:\n {0}".format(rotation_vector)
+        print "Translation Vector:\n {0}".format(translation_vector)
+
+        # test_points = model_points
+
+        test_points = np.array([
+           (-0.15892, 0.13611, 0.04),
+           (-0.49606, 0.13618, 0.04),
+           (-0.79833, 0.15035, 0.04),
+           (0.49976, 1.0973, 0.5),
+           (0.81672, 1.095, 0.5),
+           (1.1219, 1.1152, 0.5),
+        ])
+
+        (projected_image_points, jacobian) = cv2.projectPoints(test_points, rotation_vector, translation_vector,
+                                                               camera_matrix, dist_coeffs)
+        projected_image_points = np.reshape(projected_image_points, [len(projected_image_points), 2])
+
+        print "The projoected points are ", projected_image_points
+        print "The projoected points (shape)", projected_image_points.shape
+
+        for p in image_points:
+            cv2.circle(im, (int(p[0]), int(p[1])), 3, (0, 0, 255), -1)
+
+        for p in projected_image_points:
+            cv2.circle(im, (int(p[0]), int(p[1])), 3, (255, 0, 0), -1)
+
+        # Calculate the average of the error (labelled as pixel values)
+        # diff = projected_image_points - test_points[0:1,:]
+        # mTRE = (np.sum(np.sqrt(np.square(diff[:,0]) + np.square(diff[:,1])))) / len(projected_image_points)
+        # print("The diff of 2D image points are", diff.shape)
+        # # mean target registration error
+        # print("The mTRE (2D image) is ", mTRE)
+
+        cv2.imshow("Output", im)
+        cv2.waitKey(0)
+
+    # def VizPNP(self):
+    #
+    #     # Viz the two coordinate system
+    #     renderer = vtk.vtkRenderer()
+    #     renderWindow = vtk.vtkRenderWindow()
+    #     renderWindow.AddRenderer(renderer)
+    #     renderWindowInteractor = vtk.vtkRenderWindowInteractor()
+    #     renderWindowInteractor.SetRenderWindow(renderWindow)
+    #     renderer.SetBackground(.1, .2, .3)  # Background dark blue
+    #
+    #     transform_1 = vtk.vtkTransform()
+    #     transform_1.Translate(0.0, 0.0, 0.0)
+    #     transform_1.RotateX(45)
+    #
+    #     transform_2 = vtk.vtkTransform()
+    #     transform_2.Translate(1.0, 1.0, 1.0)
+    #
+    #     # Design the first axes
+    #     axes_1 = vtk.vtkAxesActor()
+    #     axes_1.SetUserTransform(transform_1)
+    #     renderer.AddActor(axes_1)
+    #
+    #     axes_2 = vtk.vtkAxesActor()
+    #     axes_2.SetUserTransform(transform_2)
+    #     renderer.AddActor(axes_2)
+    #
+    #     renderer.ResetCamera()
+    #     renderWindow.Render()
+    #     # begin mouse interaction
+    #     renderWindowInteractor.Start()
+
 def CameraConfig():
     # return the camera configuration
     # Configure depth and color streams
@@ -976,15 +1200,16 @@ def CheckboardMTI3D():
     # return the coordinates of the chessboard values
     # Based on the results of the grid points
     a = 1
-    line_x = np.linspace(0.0, -1.8, num=7)
-    line_y = np.linspace(0.0, -1.8, num=7)
+    line_x = np.linspace(0.0, -1.88, num=7)
+    line_y = np.linspace(0.0, -1.88, num=7)
     MOVE_X, MOVE_Y = np.meshgrid(line_x, line_y)
     Points_2d = np.zeros((len(MOVE_X[:].ravel()), 2))
     Points_2d[:,0] = MOVE_X.ravel()
     Points_2d[:,1] = MOVE_Y.ravel()
-    # print "The MOVE_X is", MOVE_X
-    # print "The MOVE_Y is", MOVE_Y
-    # print "The points are ", Points_2d
+
+    print "The chessboard MTI MOVE_X is", MOVE_X
+    print "The chessboard MTI MOVE_Y is", MOVE_Y
+    print "The chessboard MTI points are ", Points_2d
 
     return MOVE_X.ravel(), MOVE_Y.ravel()
 
@@ -995,8 +1220,8 @@ def Inch2Direction(unit_move, move_x, move_y):
     # UserIn: inches on z axis
 
     # unit_move = 0.05    # how many steps to be moved
-    steps_x = np.int(move_x / unit_move)
-    steps_y = move_y / unit_move
+    steps_x = np.int( np.floor(move_x / unit_move) )
+    steps_y = np.int( np.ceil(move_y / unit_move) )
     sign_x = np.int(np.sign([steps_x]))
     sign_y = np.int(np.sign([steps_y]))
     UserIn = []
@@ -1054,153 +1279,21 @@ def PixelToRegion(x_center_2d, y_center_2d):
 
     return centers
 
-    # def pnp(self):
-        #
-        #     # Configure the realsense device
-        #     pipeline = rs.pipeline()
-        #     config = rs.config()
-        #     config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
-        #     config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
-        #     pipeline.start(config)
-        #
-        #     # pnp operation to calculate the result
-        #     # Intrinsic parameters
-        #     frames = pipeline.wait_for_frames()
-        #     color_frame = frames.get_color_frame()
-        #     color_intrin = color_frame.profile.as_video_stream_profile().intrinsics
-        #
-        #     # The camera matrix
-        #     # width: 640, height: 480, ppx: 312.14, ppy: 238.018, fx: 619.846, fy: 619.846, model: None
-        #     camera_matrix = np.array(
-        #         [[619.846, 0, 312.14],
-        #          [0, 619.846, 238.018],
-        #          [0, 0, 1]], dtype="double"
-        #     )
-        #     print(camera_matrix)
-        #
-        #     # Read the 2D points
-        #     P_2D = np.load('C:\Users\gm143\TumorCNC_brainlab\BTL\P_2D.npy')
-        #     print(P_2D.shape)
-        #
-        #     # Read the 3D points
-        #     p3D = np.load('C:\Users\gm143\TumorCNC_brainlab\BTL\P_3D.npy')
-        #     P_3D = p3D[1:]
-        #     print(P_3D)
-        #
-        #     # normalize the 3D points to the origin of the first point
-        #     P_3D_new = P_3D - np.tile(P_3D[0,:], (270, 1))
-        #     print(P_3D_new)
-        #
-        #     # PNP to find the relation and transformation
-        #     # Assume no distortion
-        #     dist_coeffs = np.zeros((4, 1))  # Assuming no lens distortion
-        #     (success, rotation_vector, translation_vector) = cv2.solvePnP(P_3D_new, P_2D, camera_matrix,
-        #                                                                   dist_coeffs, flags=cv2.SOLVEPNP_ITERATIVE)
-        #     rmat = cv2.Rodrigues(rotation_vector)[0]
-        #     print "Rotation Vector:\n {0}".format(rotation_vector)
-        #     print "Translation Vector:\n {0}".format(translation_vector)
-        #     print "The rotation matrix is ", rmat
-        #
-        #     # Test the 3D point
-        #     test_3D = P_3D_new  # after normalization
-        #     test_2D = P_2D
-        #
-        #     print "The test_3D is ", test_3D
-        #     print "The test 2D is ", test_2D
-        #
-        #     (test_point2D, jacobian) = cv2.projectPoints(np.array([test_3D]), rotation_vector, translation_vector, camera_matrix, dist_coeffs)
-        #
-        #     # Reshape the test_point2D (L, L, L) to (L, L)
-        #     test_point2D = np.reshape(test_point2D, (len(test_point2D), 2))
-        #
-        #     print("The test 2D point is ", test_point2D)
-        #     print("The shape of test 2D point is ", test_point2D.shape)
-        #
-        #     # Calculate the average of the error (labelled as pixel values)
-        #     diff = test_2D - test_point2D
-        #     mTRE = (np.sum(np.sqrt(np.square(diff[:,0]) + np.square(diff[:,1])))) / len(test_point2D)
-        #     print("The diff of 2D image points are", diff.shape)
-        #     # mean target registration error
-        #     print("The mTRE (2D image) is ", mTRE)
-        #
-        #     return rmat, translation_vector, mTRE
-        #
-        # def VizPNP(self):
-        #
-        #     # Viz the two coordinate system
-        #     renderer = vtk.vtkRenderer()
-        #     renderWindow = vtk.vtkRenderWindow()
-        #     renderWindow.AddRenderer(renderer)
-        #     renderWindowInteractor = vtk.vtkRenderWindowInteractor()
-        #     renderWindowInteractor.SetRenderWindow(renderWindow)
-        #     renderer.SetBackground(.1, .2, .3)  # Background dark blue
-        #
-        #     transform_1 = vtk.vtkTransform()
-        #     transform_1.Translate(0.0, 0.0, 0.0)
-        #     transform_1.RotateX(45)
-        #
-        #     transform_2 = vtk.vtkTransform()
-        #     transform_2.Translate(1.0, 1.0, 1.0)
-        #
-        #     # Design the first axes
-        #     axes_1 = vtk.vtkAxesActor()
-        #     axes_1.SetUserTransform(transform_1)
-        #     renderer.AddActor(axes_1)
-        #
-        #     axes_2 = vtk.vtkAxesActor()
-        #     axes_2.SetUserTransform(transform_2)
-        #     renderer.AddActor(axes_2)
-        #
-        #     renderer.ResetCamera()
-        #     renderWindow.Render()
-        #     # begin mouse interaction
-        #     renderWindowInteractor.Start()
-
-    # def Test_1(self):
-    #     # Apply the transformation
-    #     R_final = np.asarray([[-0.99999, 0.0053327, 0.00040876],
-    #                           [0.0048848, 0.94176, - 0.33624],
-    #                           [0.002178, 0.33623, 0.94178]])
-    #     t_final = np.asarray([-2.7387, -10.872, -0.15546])
-    #     # Test the real data
-    #     P_STEREO_ROI = np.load('C:\Users\gm143\TumorCNC_brainlab\BTL\P_STEREO_ROI.npy')
-    #     P_STEREO_ROI_Color = np.load('C:\Users\gm143\TumorCNC_brainlab\BTL\P_STEREO_ROI_Color.npy')
-    #
-    #     P_MTI_3d = loadmat('C:\Users\gm143\TumorCNC_brainlab\BTL\P_MTI_3d.mat')
-    #     P_MTI_3d = P_MTI_3d['P_MTI_3d']
-    #     print "The MTI 3D data is ", P_MTI_3d
-    #
-    #     # remove the zero values
-    #     idx_remove = np.int_(np.where((P_STEREO_ROI[:,0] == 0) & (P_STEREO_ROI[:,1] == 0) & (P_STEREO_ROI[:,2] == 0)))
-    #     # P_STEREO_ROI = P_STEREO_ROI[~idx_remove[0], :]
-    #     # P_STEREO_ROI_Color = P_STEREO_ROI_Color[~idx_remove[0], :]
-    #     P_STEREO_ROI = np.multiply(P_STEREO_ROI, 100)
-    #     print "The index of the removal values are ", idx_remove
-    #     print "The ROI is ", np.max(P_STEREO_ROI)
-    #     # Actor_grid = BTL_VIZ.ActorNpyColor(P_STEREO_ROI, P_STEREO_ROI_Color)
-    #     vtk_Pc = npy2vtk(P_STEREO_ROI)
-    #     BTL_VIZ.VizVtk([vtk_Pc])
-    #     Actor_plane = BTL_VIZ.ActorNpyColor(P_STEREO_ROI, P_STEREO_ROI_Color)
-    #     VizActor([Actor_plane])
-    #
-    #     # Transform the test data
-    #     P_STEREO_ROI_tform = np.matmul(P_STEREO_ROI, R_final) + np.tile(t_final, (len(P_STEREO_ROI), 1))
-    #     vtk_Pc_tform = npy2vtk(P_STEREO_ROI_tform)
-    #     vtk_MTI_3d = npy2vtk(P_MTI_3d)
-    #     BTL_VIZ.VizVtk([vtk_Pc_tform])
-    #     Actor_MTI = BTL_VIZ.ActorNpyColor(P_MTI_3d, P_STEREO_ROI_Color[0:len(P_MTI_3d), :])
-    #     Actor_plane_tform = BTL_VIZ.ActorNpyColor(P_STEREO_ROI_tform, P_STEREO_ROI_Color)
-    #     VizActor([Actor_plane, Actor_plane_tform, Actor_MTI])
-
 if __name__ == "__main__":
 
     test = PNP()
 
+    test.pnp()
+
+    # test.HarrisDetector()
+
+    # test.MoveFromAngle(-3.9498, -4.6173)
+    # test.MoveFromAngle(-3.4737, -4.1231)
+
     # Test Scan5d -- finished
-    test.Scan5d()
+    # test.Scan5d()
 
     # test.ShowOneImg('C:/Users/gm143/TumorCNC_brainlab/BTL/realsense/mask.png')
-
     # MOVE_X, MOVE_Y = CheckboardMTI3D()
     # test.Scan3d(MOVE_X, MOVE_Y)
 
@@ -1230,8 +1323,8 @@ if __name__ == "__main__":
     # test.MoveOrigin()
 
     # Test MovePoint -- finished
-    # move_x = 0.65                   # inches
-    # move_y = -0.60                  # inches
+    # move_x = 1.1219                     # inches
+    # move_y = -1.1152                    # inches
     # test.MovePoint(move_x, move_y)
 
     # Test Extract2DPoints -- finished
