@@ -32,6 +32,7 @@ import PIL
 from PIL import Image
 from PIL import ImageTk
 from controlLaser import ControlLaser
+import BTL_FastPc
 
 class PNP:
 
@@ -217,7 +218,7 @@ class PNP:
 
         flag_hene = raw_input("Do you want to include hene? (yes/no)")
         if flag_hene == 'yes':
-            UserIn_hene = Inch2Direction(0.01, -0.40, -0.11)
+            UserIn_hene = Inch2Direction(0.01, -0.42, -0.11)
             UserIn = UserIn_hene + UserIn
         centerScan, z_dist, center_angles = self.CM.controlPoint_v1([x_c], [y_c], UserIn)
 
@@ -227,14 +228,107 @@ class PNP:
         y_cent_ang = y_angle  # np.array(-1.168893);
         self.CD.point_move(x_cent_ang, y_cent_ang, .005)
 
+    def MoveFromPosition(self, x_position, y_position, z_position):
+
+        [x_ang, y_ang] = self.ST.CS.angular_position(x_position, y_position, z_position)
+        self.CD.point_move(x_ang, y_ang, 0.005)
+
+    def MoveTest(self):
+
+        # Move to the origin to restart
+        self.MoveOrigin()
+
+        # calculate the angles
+        # x_ang = [0]
+        # y_ang = [0]
+
+        # x = np.array([-0.03505])
+        # y = np.array([0.06479])
+        # z = np.array([9.271])
+
+        x = np.array([-0.043356])
+        y = np.array([0.055868])
+        z = np.array([9.2782])
+
+        [x_ang_mti, y_ang_mti] = self.CS.angular_position(x, y, z)
+        print "The angle of mtiis ", x_ang_mti, y_ang_mti
+
+        # x_ang_mti = - 0.82
+        # y_ang_mti = - 0.97
+
+        # Why we need to input the first z distance?
+        self.CD.point_move(x_ang_mti, y_ang_mti, .005)
+        z_dist_vol = float(self.CD.point_measure(1))                # Measure the plane -- voltage
+        z_dist = float((z_dist_vol / 0.04 + 175) * 0.03937007874)   # convert voltage to the distance
+        print "The distance after point move is ", z_dist
+
+        # z_dist = 9.25417358348                                    # This distance is really important
+        # targetPoints = self.CS.xy_position(x_ang_mti, y_ang_mti, z_dist, 0)
+        targetPoints = self.ST.measure_point_wes(x_ang_mti, y_ang_mti)
+        print "The target point of mti (measure point wes) is ", targetPoints
+
+        x_co2 = np.array([targetPoints[0, 0]])
+        y_co2 = np.array([targetPoints[0, 1]])
+        z_co2 = np.array([targetPoints[0, 2]])
+
+        print(x_co2, y_co2, z_co2)
+
+        [x_ang_co2, y_ang_co2] = self.CS.angular_position_co2(x_co2, y_co2, z_co2)
+        print "The angle of co2 is ", x_ang_co2, y_ang_co2
+        self.ST.CD.point_move(x_ang_co2[0], y_ang_co2[0], 1.)
+
+        # input the x,y,z coordinates
+        # print('here')
+        # x = np.array([0.29850429])
+        # y = np.array([0.38040736])
+        # z = np.array([9.27711944])
+
+        # [[0.29850429  0.38040736  9.27711944]]
+        # [[ 0.22643021  0.00724624  2.53248866]]
+        # [[0.23437492  0.01425146  2.54887697]]
+
+        # print('here 2')
+        # # [x_ang, y_ang] = self.CS.angular_position(x, y, z)
+        # [x_ang, y_ang] = self.CS.angular_position(x, y, z)
+        # print(x_ang, y_ang)
+        #
+        # x_ang[0] = 0
+        # y_ang[0] = 0
+        # zdist = 16.0095854846
+        #
+        # # Measure the distances in this point
+        # targetPoints = self.CS.xy_position(x_ang, y_ang, zdist, 0)
+        # print "The target points are ", targetPoints
+        #
+        # # mvoe the target to this point
+        # self.ST.CD.point_move(x_ang[0], y_ang[0], 1.)
+        # print('here 3')
+
+        # print("Tickling laser...")
+        # ST.CL.write_message("t")
+        # print "Cutting!"
+        # ST.CD.point_move(x_ang[0], y_ang[0], 1.)  # move the mirrors to the start of the scan
+        # msg = "p,100,100"
+        # ST.CL.write_message(msg)
+        # ST.CL.write_message("off")
+        # exit(1)
+
+    def MoveRegion(self):
+        # input a set of 3D point region
+        # move the Hene to the target points
+        a = 1
+
     def ScanPoints(self):
+
+        self.ST.CL.write_message("mti on")
+        self.ST.CLRedLasers.write_message("hene off")
 
         filename = 'ScanAngles.npy'
         if os.path.exists(filename):
             os.remove(filename)
 
-        mtiScanSpan = [1.3, 1.3]        # The scanning region of the MTI
-        pointDistance = 0.02             # inches between each point on the scan
+        mtiScanSpan = [1.0, 1.0]        # The scanning region of the MTI
+        pointDistance = 0.01             # inches between each point on the scan
 
         # Move the center with x_angle == 0 and y_angle == 0
         print 'Set center of scan.'
@@ -261,11 +355,15 @@ class PNP:
         if flag == 'no':
             centerScan, z_dist, center_angles = self.CM.controlPoint([x_c], [y_c])
 
+        print "The z_dist after control point is ", z_dist
         print "The center angles are", center_angles
+        print "The centerScan from ControlPoint is ", centerScan
+
         print 'Set scan box location and size.'
+
         centerScan, scanSpread, z_dist = self.CM.controlScanBox(centerScan, z_dist, mtiScanSpan, 'box', 'vertical', '2')
         scanCenter = centerScan
-        print "The centerScan is", centerScan
+        print "The centerScan from Scanbox is", centerScan
         print "The scanSpread is", scanSpread
 
         # z_dist2 = z_dist
@@ -275,7 +373,7 @@ class PNP:
         print "The pointsPerY is ", pointsPerY
 
         # print 'Performing initial raster scan.'
-        print "The z_dist is ", z_dist
+        print "The z_dist before the input for the raster_scan is  ", z_dist
         target_points, filtered_points, x_angles, y_angles = self.ST.raster_scan_v1(centerScan, scanSpread, z_dist, pointsPerX, pointsPerY, 'Scan', 'ScanAngles')
         self.ST.plot_scan(target_points, 1)
         self.PointSTA(target_points)
@@ -354,39 +452,54 @@ class PNP:
         if flag_save == 'yes':
             np.save('C:\Users\gm143\TumorCNC_brainlab\BTL\P_LaserCalibrate_2D.npy', P_LaserCalibrate_2D)
 
-    def CaptureTemplateImg(self):
+    def CaptureTemplateImg(self, L, W):
+
+        self.ST.CL.write_message("mti off")
 
         # Configure depth and color streams
-        pipeline = rs.pipeline()
-        config = rs.config()
-        config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
-        config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
+        # pipeline = rs.pipeline()
+        # config = rs.config()
+        # config.enable_stream(rs.stream.depth, 1280, 720, rs.format.z16, 30)
+        # config.enable_stream(rs.stream.color, 1280, 720, rs.format.bgr8, 30)
+
+
+        flag_save = raw_input("Do you want to save the template image?")
+
+        cap = cv2.VideoCapture(1)
+        cap.set(3, L)
+        cap.set(4, W)
 
         # Start streaming
-        pipe_profile = pipeline.start(config)
+        # pipe_profile = pipeline.start(config)
         curr_frame = 0
-        flag_save = raw_input("Do you want to save the template image?")
 
         try:
             while (curr_frame < 20):
 
                 # Get the color frame
-                frames = pipeline.wait_for_frames()
+                # frames = pipeline.wait_for_frames()
+                ret, frames = cap.read()
 
                 # Align_depth_frame is a 640x480 depth image
-                align_to = rs.stream.color
-                align = rs.align(align_to)
-                aligned_frames = align.process(frames)
-                aligned_depth_frame = aligned_frames.get_depth_frame()
-                color_frame = aligned_frames.get_color_frame()
-                color_image = np.asanyarray(color_frame.get_data())
+                # align_to = rs.stream.color
+                # align = rs.align(align_to)
+                # aligned_frames = align.process(frames)
+                # aligned_depth_frame = aligned_frames.get_depth_frame()
+                # color_frame = aligned_frames.get_color_frame()
+                # color_image = np.asanyarray(color_frame.get_data())
+
+                color_image = frames
 
                 # This is important since the first frame of the color image is dark while later it is better
                 curr_frame += 1
-                if (curr_frame == 10) and flag_save == 'yes':
-                    cv2.imwrite('C:/Users/gm143/TumorCNC_brainlab/BTL/realsense/template.png', color_image)
+                if (curr_frame == 10) and flag_save == 'yes' and L == 640:
+                    cv2.imwrite('C:/Users/gm143/TumorCNC_brainlab/BTL/realsense/target.png', color_image)
+                if (curr_frame == 10) and flag_save == 'yes' and L == 1280:
+                    cv2.imwrite('C:/Users/gm143/TumorCNC_brainlab/BTL/realsense/template_1280.png', color_image)
         finally:
-            pipeline.stop()
+            cap.release()
+            # pipeline.stop()
+
 
         return color_image
 
@@ -394,8 +507,8 @@ class PNP:
 
         # Get the centroids of the points from the images
         # Define the ROI manually
-        img = cv2.imread('C:/Users/gm143/TumorCNC_brainlab/BTL/realsense/template.png')
-        path, dirs, files = next(os.walk("C:/Users/gm143/TumorCNC_brainlab/BTL/BTL_data/ImgLaser/"))
+        img = cv2.imread('C:\Users\gm143\TumorCNC_brainlab\BTL\Calibration_2D\P_1.png')
+        path, dirs, files = next(os.walk("C:\Users\gm143\TumorCNC_brainlab\BTL\Calibration_2D/"))
         [height, width, dim] = img.shape
         # Select ROI
         r = cv2.selectROI(img)
@@ -409,21 +522,52 @@ class PNP:
 
         # Get the centroids of the images
         Centroids = []
-        foldername = 'C:/Users/gm143/TumorCNC_brainlab/BTL/BTL_data/ImgLaser/'
+        foldername = 'C:\Users\gm143\TumorCNC_brainlab\BTL\Calibration_2D/'
 
-        for i in range(3, len(files)):
+        data_miss = []  # The missing idx case
+
+        for i in range(0, len(files)):
+
+            # i = 2892
+
+            print(i)
+            # if(i==1 or i == 2 or i == 3):
+            #     continue
+
             img_name = foldername + 'P_' + str(i) + '.png'
             color_image = cv2.imread(img_name)
+            # print(len(color_image))
             ROI_image = color_image[int(r[1]):int(r[1] + r[3]), int(r[0]):int(r[0] + r[2])]
+
             grey_image = cv2.cvtColor(ROI_image, cv2.COLOR_BGR2GRAY)
-            idx = np.int_(np.where(grey_image > 240))
+            idx = np.int_(np.where(grey_image > 250))
+
+            # idx = np.int_(np.where(grey_image == np.max(grey_image)))
+            # print(idx_grey_max)
+
+            # u_x, v_x = np.max(grey_image)
+            # print(idx)
+            # print(len(idx[0]))
+
+            if(len(idx[0]) == 0):
+                # data_miss.append(i)
+                idx = np.int_(np.where(grey_image > 200))
+                # print "Here"
+                # print(idx)
+
+            if (len(idx[0]) == 0):
+                data_miss.append(i)
+                continue
+
             target_val = np.int_([np.mean(idx[1]), np.mean(idx[0])])
             Spot_center = (target_val[0] + np.int(r[0]), target_val[1] + np.int(r[1]))
-            print(i)
-            print "The new spot center is ", Spot_center
-            # cv2.circle(color_image, tuple([Spot_center[0], Spot_center[1]]), 1, (255, 0, 0))
+
+            # print "The new spot center is ", Spot_center
+            # cv2.circle(color_image, tuple([Spot_center[0], Spot_center[1]]), 5, (255, 0, 0))
+            # cv2.circle(grey_image, tuple([Spot_center[0], Spot_center[1]]), 5, (0, 0, 255))
             # cv2.imshow('image template', color_image)
             # cv2.waitKey(500)
+            # cv2.imwrite( 'C:/Users/gm143/TumorCNC_brainlab/BTL/BTL_data/ImgLaserSpot/' + str(i) + '.png', color_image)
             Centroids.append(Spot_center)
 
         # list to numpy
@@ -441,6 +585,9 @@ class PNP:
         for points in SpotCenters:
             print(points)
             cv2.circle(img, tuple(points), 1, (0, 0, 255))
+
+        print "The data missing is", data_miss
+
         # cv2.imshow('image with spots', img)
         # cv2.waitKey(0)
 
@@ -469,11 +616,11 @@ class PNP:
         # Define the Hene coordinates
         x_c = 0
         y_c = 0
-        hene_UserIn = Inch2Direction(0.05, -0.4, -0.1)
+        hene_UserIn = Inch2Direction(0.01, -0.42, -0.1)
         print "The hene usein is ", hene_UserIn
 
         # Define the predefine mti coordinates
-        mti_UserIn = Inch2Direction(0.05, 1.00, -1.00)
+        mti_UserIn = Inch2Direction(0.01, 1.00, -1.00)
         print "The mti userin is ", mti_UserIn
 
         # Define the initial position from the origin -- different from (0,0)
@@ -532,15 +679,17 @@ class PNP:
                         if count > 10:
                             img_name = 'C:/Users/gm143/TumorCNC_brainlab/BTL/Calibration_2D/P_' + str(i) + '.png'
                             cv2.imwrite(img_name, frames)
-                            print "Save the %d image" % i
+                            # print "Save the %d image" % i
                         count += 1
 
                 z_dist = float(self.CD.point_measure(0.1))                                          # measure a new distance (this returns a voltage)
                 z_dist2 = (z_dist / 0.04 + 175) * 0.03937007874                                     # convert the voltage to a distance
                 targetPoints = self.CS.xy_position(x_cent_ang, y_cent_ang, z_dist2)                 # figure out the actual point in space we are
-                z_dist = targetPoints[0, 2]                                                         # return that distance
+                z_dist = targetPoints[0, 2] # return that distance
+                mti_x = targetPoints[0, 0]
+                mti_y = targetPoints[0, 1]
                 print "The current target points are ", z_dist
-                P_MTI[i, :] = np.asarray([move_x, move_y, z_dist])
+                P_MTI[i, :] = np.asarray([mti_x, mti_y, z_dist])
         finally:
             if flag_2d == 'yes':
                 cap.release()
@@ -650,12 +799,12 @@ class PNP:
 
         # Map the stereo vision as well as the region
         # Read MTI 3D
-        P_MTI_3d = loadmat('C:\Users\gm143\TumorCNC_brainlab\BTL\P_MTI_3d.mat')
+        P_MTI_3d = loadmat('C:\Users\gm143\TumorCNC_brainlab\BTL\Others\P_MTI_3d.mat')
         P_MTI_3d = P_MTI_3d['P_MTI_3d']
         print "The MTI 3D data is ", P_MTI_3d
 
         # Read the Stereo 3D
-        P_Stereo_3d = loadmat('C:\Users\gm143\TumorCNC_brainlab\BTL\P_STEREO_3d.mat')
+        P_Stereo_3d = loadmat('C:\Users\gm143\TumorCNC_brainlab\BTL\Others\P_STEREO_3d.mat')
         P_Stereo_3d = P_Stereo_3d['P_STEREO_3d']
         print "The Stereo 3D data is ", P_Stereo_3d
 
@@ -667,6 +816,13 @@ class PNP:
 
         # Apply the transformation
         raw_input("Please update the matrix")
+
+        # R_final = np.asarray([[0.9995, -0.0183, -0.0242],
+        #                       [-0.0074, -0.9203, 0.3910],
+        #                       [-0.0295, -0.3907, -0.9201]])
+        # t_final = np.asarray([1.0603, 2.8743, 11.6170])
+
+
         R_final = np.asarray([[0.99897, -0.0018348, -0.045348],
                               [0.013816, -0.93947, 0.34236],
                               [-0.043231, -0.34263, -0.93848]])
@@ -938,6 +1094,7 @@ class PNP:
         return P_target_2D
 
     def ControlPanel(self):
+
         a = 1
         # CP = BTL_GUI.GUI_Wes(Tk())
         # msg = "tickle"
@@ -1075,7 +1232,7 @@ class PNP:
         # Configure the realsense device
         pipeline = rs.pipeline()
         config = rs.config()
-        config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
+        # config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
         config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
         pipeline.start(config)
 
@@ -1154,6 +1311,143 @@ class PNP:
         cv2.imshow("Output", im)
         cv2.waitKey(0)
 
+    def RegionCut(self):
+
+        try:
+
+            # close the laser for safety concern
+            self.ST.CL.write_message("off")
+
+            # Load the original MTI data -- x,y,z raw values
+            data = np.load('C:\Users\gm143\TumorCNC_brainlab\BTL\P_MTI_xy_modified.npy')
+            x_points_raw = data[:, 0]
+            y_points_raw = data[:, 1]
+            z_points_raw = data[:, 2]
+
+            # Cut the region based on results
+            raw_input('Press enter to start cutting process.')
+            print "Calculating angles..."
+
+            # CO2 angles
+            # method 1
+            # x_points_raw = x_points_raw + 0.43
+            # y_points_raw = y_points_raw - 0.08
+            # [x_ang, y_ang] = self.ST.CS.angular_position(x_points_raw, y_points_raw, z_points_raw)
+
+            # method 2
+            [x_ang, y_ang] = self.ST.CS.angular_position_co2(x_points_raw, y_points_raw, z_points_raw)
+            print "x_ang, y_ang (co2) = ", x_ang, ',', y_ang
+
+            # MTI angles
+            # [x_ang, y_ang] = self.ST.CS.angular_position(x_points_raw, y_points_raw, z_points_raw)
+            # print "x_ang, y_ang (co2) = ", x_ang, ',', y_ang
+
+            # turn the MTI off
+            self.ST.CLRedLasers.write_message("hene on")
+            self.ST.CLRedLasers.write_message("mti on")
+
+            # Check the hene points before -- move the points to the hene
+            for i in range(len(x_ang)):
+                x_cent_ang = x_ang[i]
+                y_cent_ang = y_ang[i]
+                self.CD.point_move(x_cent_ang, y_cent_ang, 0.005)
+
+            raw_input("Pay attention to wear glass")
+            raw_input("close the tip on the whole device")
+
+            self.ST.CLRedLasers.write_message("hene on")
+
+            print "Cutting!"
+            self.ST.CD.point_move(x_ang[0], y_ang[0], 1.)  # move the mirrors to the start of the scan
+            self.ST.CL.write_message("t")
+            sleep(1)
+
+            msg = "continuous, " + str(50)
+            myFrequency = 500  # bigger than 1000 causes an error, the mirrors jump.
+            self.ST.CL.write_message(msg)
+            self.ST.CD.cutting_scan_wes(x_ang, y_ang, myFrequency)
+            self.ST.CL.write_message("off")
+
+        finally:
+            self.ST.CL.write_message("off")
+
+        # self.ST.CL.write_message("off")
+        # self.ST.CLRedLasers.write_message("hene off")
+        # self.ST.CLRedLasers.write_message("mti on")
+        # self.ST.CL.write_message("off")
+        # self.ST.CL.close_serial()
+
+    def RegionCut_ANN(self):
+
+        filename = 'C:/Users/gm143/TumorCNC_brainlab/BTL/xyz_points.csv'
+
+        # Cut the region based on the ANN model
+        try:
+            self.ST.CL.write_message("off")
+            self.ST.CLRedLasers.write_message("hene on")
+            filename = 'xyz_points.csv'
+            print "Loading file: " + str(filename)
+            with open(filename, 'rb') as csvfile:
+                spamreader = csv.reader(csvfile, delimiter=',')
+                a = list(spamreader)
+                x_points_raw = np.zeros(len(a))
+                y_points_raw = np.zeros(len(a))
+                z_points_raw = np.zeros(len(a))
+                for idx, row in enumerate(a):
+                    aPoint = map(float, row)
+                    x_points_raw[idx] = (aPoint[0])  # convert mm to inches
+                    y_points_raw[idx] = (aPoint[1])
+                    z_points_raw[idx] = (aPoint[2])
+            asdf = np.array([x_points_raw, y_points_raw, z_points_raw])
+            self.ST.plot_scan(asdf.transpose())
+
+            raw_input("Tickling laser...")
+            self.ST.CL.write_message("t")
+            self.ST.CLRedLasers.write_message("mti off")
+            self.ST.CLRedLasers.write_message("hene on")
+
+            raw_input('Press enter to start cutting process.')
+            print "Calculating angles..."
+            [x_ang, y_ang] = self.CS.angular_position_co2(x_points_raw, y_points_raw, z_points_raw)
+            print "x_ang, y_ang (co2) = ", x_ang, ',', y_ang
+
+            # for i in range(len(x_ang)):
+            #     x_cent_ang = x_ang[i]
+            #     y_cent_ang = y_ang[i]
+            #     self.CD.point_move(x_cent_ang, y_cent_ang, 0.005)
+
+            raw_input('Press enter for shooting.')
+            flag_laser = 1
+            while(flag_laser < 2):
+                self.ST.CLRedLasers.write_message("mti off")
+                self.ST.CLRedLasers.write_message("hene on")
+                print "Cutting!"
+                self.ST.CD.point_move(x_ang[0], y_ang[0], 1.)       # move the mirrors to the start of the scan
+                power = 30
+                # power = raw_input('What is the input of the laser power?')
+                msg = "continuous, " + str(power)
+                myFrequency = 300                                   # bigger than 1000 causes an error, the mirrors jump.
+                self.ST.CL.write_message(msg)
+                self.ST.CD.cutting_scan_wes(x_ang, y_ang, myFrequency)
+                # self.ST.CL.write_message("off")
+
+                # self.ST.CLRedLasers.write_message("hene off")
+                # self.ST.CLRedLasers.write_message("mti on")
+                # self.ST.CL.write_message("off")
+                # self.ST.CL.close_serial()
+
+                flag_laser += 1
+
+                # flag_laser = raw_input("Do you want to continue? (1/0)")
+                # if flag_laser == '0':
+                #     break
+                # print(flag_laser)
+                # test.CaptureTemplateImg()
+
+        finally:
+            self.ST.CL.write_message("off")
+            self.ST.CLRedLasers.write_message("hene off")
+
     # def VizPNP(self):
     #
     #     # Viz the two coordinate system
@@ -1200,8 +1494,8 @@ def CheckboardMTI3D():
     # return the coordinates of the chessboard values
     # Based on the results of the grid points
     a = 1
-    line_x = np.linspace(0.0, -1.88, num=7)
-    line_y = np.linspace(0.0, -1.88, num=7)
+    line_x = np.linspace(0.0, -1.0, num=10)
+    line_y = np.linspace(0.0, -1.0, num=10)
     MOVE_X, MOVE_Y = np.meshgrid(line_x, line_y)
     Points_2d = np.zeros((len(MOVE_X[:].ravel()), 2))
     Points_2d[:,0] = MOVE_X.ravel()
@@ -1282,8 +1576,38 @@ def PixelToRegion(x_center_2d, y_center_2d):
 if __name__ == "__main__":
 
     test = PNP()
+    PC = BTL_FastPc.fastpc()
 
-    test.pnp()
+    # MOVE_X, MOVE_Y = CheckboardMTI3D()
+    # test.Scan3d(MOVE_X, MOVE_Y)
+
+    test.RegionCut_ANN()
+
+    test.CaptureTemplateImg(L = 640, W = 480)
+    test.CaptureTemplateImg(L = 1280, W = 720)
+    PC.GetVerticesTexture()
+
+    # test.ScanPoints()
+    # test.GetCentroidFromImg()
+
+    # test.Scan3d()
+
+    # test.MoveTest()
+
+    # x_pos = 0.0
+    # y_pos = 0.0
+    # z_pos = 9.1
+    # test.MoveFromPosition(x_pos, y_pos, z_pos)
+
+    # test.RegionCut()
+
+    # Test the scan regions
+    # data = np.load('C:\Users\gm143\TumorCNC_brainlab\BTL\P_MTI_xy_modified.npy')
+    # MOVE_X = -data[:,0]
+    # MOVE_Y = data[:,1]
+    # test.Scan3d(MOVE_X, MOVE_Y)
+
+    # test.pnp()
 
     # test.HarrisDetector()
 
@@ -1323,8 +1647,8 @@ if __name__ == "__main__":
     # test.MoveOrigin()
 
     # Test MovePoint -- finished
-    # move_x = 1.1219                     # inches
-    # move_y = -1.1152                    # inches
+    # move_x = 0.99741                    # inches
+    # move_y = -0.9748                    # inches
     # test.MovePoint(move_x, move_y)
 
     # Test Extract2DPoints -- finished
