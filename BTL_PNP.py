@@ -35,6 +35,7 @@ from PIL import Image
 from PIL import ImageTk
 from controlLaser import ControlLaser
 import BTL_FastPc
+import matlab.engine
 
 class PNP:
 
@@ -323,7 +324,7 @@ class PNP:
     def ScanPoints(self):
 
         self.ST.CL.write_message("mti on")
-        self.ST.CLRedLasers.write_message("hene off")
+        # self.ST.CLRedLasers.write_message("hene off")
 
         filename = 'ScanAngles.npy'
         if os.path.exists(filename):
@@ -1392,7 +1393,7 @@ class PNP:
         try:
             self.ST.CL.write_message("off")
             self.ST.CLRedLasers.write_message("hene on")
-            filename = 'xyz_points.csv'
+            # filename = 'xyz_points.csv'
             print "Loading file: " + str(filename)
             with open(filename, 'rb') as csvfile:
                 spamreader = csv.reader(csvfile, delimiter=',')
@@ -1430,10 +1431,10 @@ class PNP:
                 self.ST.CLRedLasers.write_message("hene on")
                 print "Cutting!"
                 self.ST.CD.point_move(x_ang[0], y_ang[0], 1.)       # move the mirrors to the start of the scan
-                power = 70  # 80
+                power = 30  # 80  70
                 # power = raw_input('What is the input of the laser power?')
                 msg = "continuous, " + str(power)
-                myFrequency = 250  # 200                                 # bigger than 1000 causes an error, the mirrors jump.
+                myFrequency = 400  # 200    250                             # bigger than 1000 causes an error, the mirrors jump.
                 self.ST.CL.write_message(msg)
                 self.ST.CD.cutting_scan_wes(x_ang, y_ang, myFrequency)
                 # self.ST.CL.write_message("off")
@@ -1508,18 +1509,18 @@ class PNP:
             elif event == cv2.EVENT_MOUSEMOVE:
                 if drawing == True:
                     if mode == True:
-                        cv2.circle(img, (x, y), 5, (0, 0, 255), -1)
+                        cv2.circle(img, (x, y), 3, (0, 0, 255), -1)
                     else:
                         P_ROI.append([x, y])
                         # print(P_ROI)
-                        cv2.circle(img, (x, y), 5, (0, 0, 255), -1)
+                        cv2.circle(img, (x, y), 3, (0, 0, 255), -1)
 
             elif event == cv2.EVENT_LBUTTONUP:
                 drawing = False
                 if mode == True:
                     cv2.rectangle(img, (ix, iy), (x, y), (0, 255, 0), -1)
                 else:
-                    cv2.circle(img, (x, y), 5, (0, 0, 255), -1)
+                    cv2.circle(img, (x, y), 3, (0, 0, 255), -1)
 
         # img = np.zeros((512, 512, 3), np.uint8)
         img = cv2.imread('C:/Users/gm143/TumorCNC_brainlab/BTL/realsense/target.png', 0)
@@ -1544,19 +1545,29 @@ class PNP:
         mask = np.zeros(img.shape, dtype = np.uint8)
         roi_corners = np.array(points, dtype=np.int32)  # pointsOf the polygon Like [[(10,10), (300,300), (10,300)]]
         white = (255, 255, 255)
-        cv2.fillPoly(mask, roi_corners, 255)
+        mask_use = cv2.fillPoly(mask, roi_corners, 255)
 
         # apply the mask
         masked_image = cv2.bitwise_and(img, mask)
+
+        # return the mask indices
+        mask_idx = np.where(masked_image != 0)
+        x_roi = mask_idx[1]
+        y_roi = mask_idx[0]
+        ROI = np.zeros([len(x_roi), 2])
+        ROI[:,0] = x_roi
+        ROI[:,1] = y_roi
+        ROI = np.array(ROI, dtype = np.int32)
+        print(ROI)
 
         # display your handywork
         cv2.imshow('masked image', masked_image)
         cv2.waitKey()
         cv2.destroyAllWindows()
 
-        return P_ROI
+        return ROI
 
-    def GetMtiTexColor(self):
+    def GetMtiTexColor(self, P_ROI):
 
         # Read the data
         MTI_tex_1 = np.load('C:/Users/gm143/TumorCNC_brainlab/BTL/MTI_textures.npy')
@@ -1566,7 +1577,7 @@ class PNP:
 
         # Remove the 0 values
         idx_remove = np.where((MTI_vtx_1[:, 0] == 0) & (MTI_vtx_1[:, 1] == 0) & (MTI_vtx_1[:, 2] == 0))
-        mask = np.ones(MTI_vtx_1[:, 0].shape, dtype=bool)  # np.ones_like(a,dtype=bool)
+        mask = np.ones(MTI_vtx_1[:, 0].shape, dtype = bool)
         mask[idx_remove] = False
         MTI_vtx_2 = MTI_vtx_1[mask]
         MTI_tex_2 = MTI_tex_1[mask]
@@ -1578,13 +1589,13 @@ class PNP:
         # Remove the out of range index
         idx_remove = np.where(
             (MTI_tex_2[:, 0] >= w) | (MTI_tex_2[:, 0] <= 0) | (MTI_tex_2[:, 1] >= h) | (MTI_tex_2[:, 1] <= 0))
-        mask = np.ones(MTI_tex_2[:, 0].shape, dtype=bool)  # np.ones_like(a,dtype=bool)
+        mask = np.ones(MTI_tex_2[:, 0].shape, dtype = bool)
         mask[idx_remove] = False
         MTI_vtx_3 = MTI_vtx_2[mask]
         MTI_tex_3 = MTI_tex_2[mask]
 
         MTI_vtx = np.asarray(MTI_vtx_3)
-        MTI_tex = np.asarray(MTI_tex_3, dtype=np.int32)
+        MTI_tex = np.asarray(MTI_tex_3, dtype = np.int32)
 
         # Color vector
         colorvec = np.zeros([len(MTI_tex[:, 0]), 3])
@@ -1595,23 +1606,89 @@ class PNP:
             colorvec[i, 0] = rgb[0]
             colorvec[i, 1] = rgb[1]
             colorvec[i, 2] = rgb[2]
-        colorvec = np.asarray(colorvec, dtype=np.int32)
 
-        return MTI_vtx, MTI_tex, colorvec
+        colorvec = np.asarray(colorvec, dtype = np.int32)
 
-    def GetColorPc(self):
+        # Viz the colorized point cloud results
+        obj_actor = BTL_VIZ.ActorNpyColor(MTI_vtx, colorvec)
+        BTL_VIZ.VizActor([obj_actor])
+
+        # Colorize point cloud
+        TARGET_Pc = np.zeros([len(P_ROI), 3])
+        TARGET_Color = np.zeros([len(P_ROI), 3])
+        r = 2
+        for i in range(len(P_ROI)):
+            print(i)
+            p1 = P_ROI[i, :] + np.asarray([-r, -r])
+            p2 = P_ROI[i, :] + np.asarray([r, r])
+            x1 = p1[0]; y1 = p1[1]
+            x2 = p2[0]; y2 = p2[1]
+            idx_use = np.where((MTI_tex[:,0] >= x1) & (MTI_tex[:,0] <= x2) & (MTI_tex[:,1] >= y1) & (MTI_tex[:,1] <= y2))
+            # print(len(idx_use[0]))
+            if len(idx_use[0]) == 0:
+                TARGET_Pc[i, :] = np.asarray([0,0,0])
+                TARGET_Color[i, :] = np.asarray([0,0,0])
+                continue
+            elif len(idx_use[0]) == 1:
+                TARGET_Pc[i, :] = np.asarray(MTI_vtx[idx_use, :])
+                TARGET_Color[i, :] = np.asarray(colorvec[idx_use,:])
+                continue
+            tex_use = np.asarray(MTI_tex[idx_use, :])
+            vtx_use = np.asarray(MTI_vtx[idx_use, :])
+            color_use = np.asarray(colorvec[idx_use,:])
+            vtx_use = np.asarray(vtx_use[0])
+            color_use = np.asarray(color_use[0])
+            TARGET_Pc[i,:] = np.mean(vtx_use, axis = 0)
+            TARGET_Color[i,:] = np.asarray(np.mean(color_use, axis = 0), dtype = np.int32)
+
+        # Viz the colorized point cloud results
+        print(TARGET_Pc)
+        print(TARGET_Color)
+        obj_actor = BTL_VIZ.ActorNpyColor(TARGET_Pc, TARGET_Color)
+        BTL_VIZ.VizActor([obj_actor])
+
+        return TARGET_Pc, TARGET_Color, colorvec
+
+    def GetTargetPc(self):
+
         # Get the colorized point cloud from texture and vertex data
-        a = 1
+        # Get the point cloud relative to the MTI frame
+        P_ROI = self.BTL_Draw()
+        TARGET_Pc, TARGET_Color, colorvec = self.GetMtiTexColor(P_ROI)
 
+        R_final = np.asarray([[-0.9995, 0.0167, 0.0253], \
+                             [-0.0219, -0.9749, -0.2214], \
+                              [0.0210, -0.2218, 0.9749]])
+        t_final = np.asarray([-2.7019, 5.7019, -0.2929])
 
-    def BTL_Regis(self):
-        a = 1
+        # Transfer to the MTI frame
+        TARGET = TARGET_Pc * 100
+        self.ST.plot_scan(TARGET)
+        N_final = len(TARGET)
 
-    def BTL_MapAblation(self):
-        a = 1
+        # print(TARGET)
+        np.save('test.npy', TARGET)
+        TARGET_mti = np.matmul(R_final, np.transpose(TARGET)) + np.transpose(np.tile(t_final, (N_final, 1)))
+        TARGET_mti = np.transpose(TARGET_mti)
+        # print(TARGET_mti[0, :])
+        TARGET_mti = TARGET_mti / 2.54  # cm to inch
+        # print(TARGET[0,:])
+        # print(TARGET_mti[0,:])
+        # print(np.dot(R_final, np.transpose(TARGET)))
+        # print(np.transpose(np.tile(t_final, (N_final, 1))))
+        # print(TARGET_mti.shape)
 
-    def Ablation_Optimize(self):
-        a = 1
+        # Show the MTI data
+        self.ST.plot_scan(TARGET_mti)
+
+        raw_input("Please save the data as csv file")
+        np.savetxt("C:/Users/gm143/TumorCNC_brainlab/BTL/xyz_points.csv", TARGET_mti, delimiter=",", fmt = "%0.4f" )
+
+    def MATLAB2Python(self):
+
+        eng = matlab.engine.start_matlab()
+        eng.cd('c:\Users\gm143\Documents\MATLAB\BTL')
+        eng.main(nargout=0)
 
 def CameraConfig():
     # return the camera configuration
@@ -1716,7 +1793,13 @@ if __name__ == "__main__":
     # test.BTL_Draw()
 
     # Get the color vector, vertex and textures
-    test.GetMtiTexColor()
+    # test.GetMtiTexColor()
+
+    # Get the target point cloud -- with transformation
+    test.CaptureTemplateImg(L = 640, W = 480)
+    test.CaptureTemplateImg(L = 1280, W = 720)
+    PC.GetVerticesTexture()
+    test.GetTargetPc()
 
     # Calibration
     # for i in range(10):
@@ -1724,7 +1807,7 @@ if __name__ == "__main__":
     # test.Scan3d(MOVE_X, MOVE_Y)
 
     # Ablation
-    # test.RegionCut_ANN()
+    test.RegionCut_ANN()
     # test.CaptureTemplateImg(L = 640, W = 480)
     # test.CaptureTemplateImg(L = 1280, W = 720)
     # PC.GetVerticesTexture()
