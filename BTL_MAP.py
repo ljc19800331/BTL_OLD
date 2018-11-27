@@ -5,10 +5,11 @@ from BTL_VIZ import *
 from plyfile import PlyData
 from skimage.feature import match_template
 from scipy.interpolate import griddata
-import DataConvert
-from DataConvert import *
+import BTL_DataConvert
+from BTL_DataConvert import *
 from matplotlib import pyplot as plt
 from scipy import ndimage
+from mpl_toolkits.mplot3d import Axes3D
 import time
 
 class AutoPcMap:
@@ -61,9 +62,9 @@ class AutoPcMap:
 
         # Save to npy
         npy_scan = np.zeros((len(scan_x), 3), dtype=np.float32)
-        npy_scan[:,0] = scan_x
-        npy_scan[:,1] = scan_y
-        npy_scan[:,2] = scan_z
+        npy_scan[:, 0] = scan_x
+        npy_scan[:, 1] = scan_y
+        npy_scan[:, 2] = scan_z
 
         # convert to the point cloud -- vtk format
         vtk_scan = BTL_VIZ.VtkPointCloud()
@@ -80,33 +81,46 @@ class AutoPcMap:
 
         # Define the transformation matrix
         theta_x = theta[0]; theta_y = theta[1]; theta_z = theta[2]
-        R_tform = DataConvert.AglTransform(theta_x, theta_y, theta_z)
+        R_tform = BTL_DataConvert.AglTransform(theta_x, theta_y, theta_z)
         pc_tform = np.matmul(npy_brain, R_tform)
         pc_tform = np.asarray(pc_tform)             # The difference between ndarray and asanyarray
-        pc_tform = DataConvert.pt2Len(pc_tform, 'brain', 'inch')
+        pc_tform = BTL_DataConvert.pt2Len(pc_tform, 'brain', 'inch')
 
         # Change the size parameter to inch
-        pc_tform = DataConvert.Npy2Origin(pc_tform)
+        pc_tform = BTL_DataConvert.Npy2Origin(pc_tform)
 
         # Change the format to the npy data
-        vtk_brain = DataConvert.npy2vtk(pc_tform)
+        vtk_brain = BTL_DataConvert.npy2vtk(pc_tform)
 
         return vtk_brain, pc_tform, pc_tform[:,0], pc_tform[:,1], pc_tform[:,2]
 
-    def Scan2img(self, npy_scan, nx, ny):
+    def Scan2img(self, npy_scan, nx, ny, theta):
 
         # Define the transform angle
-        theta = [45, 45, 0]
+        # theta = [0, 0, 0]
 
         # Apply the transformation
-        R_tform = DataConvert.AglTransform(theta[0], theta[1], theta[2])
-        npy_obj = np.asarray(np.matmul(npy_scan, R_tform))
-        npy_obj = DataConvert.Npy2Origin(npy_obj)
+        R_tform = BTL_DataConvert.AglTransform(theta[0], theta[1], theta[2])
+        npy_obj = np.asarray(np.matmul(npy_scan, R_tform))                      # Apply the transform
+        npy_obj = BTL_DataConvert.Npy2Origin(npy_obj)                           # Move to the origin
+
+        # Show the 3D points of this object
+        # print(npy_obj)
+        # print(npy_obj.shape)
+
+        # Show the results -- together
+        # fig = plt.figure()
+        # ax = fig.add_subplot(111, projection='3d')
+        # ax.scatter(npy_obj[:,0], npy_obj[:,1], npy_obj[:,2], c='r', marker='o')
+        # ax.set_xlabel('X Label')
+        # ax.set_ylabel('Y Label')
+        # ax.set_zlabel('Z Label')
+        # plt.show()
 
         # This function aims to convert the 3D scan point cloud to the image
-        x_obj = npy_obj[:,0]
-        y_obj = npy_obj[:,1]
-        z_obj = npy_obj[:,2]
+        x_obj = npy_obj[:, 0]
+        y_obj = npy_obj[:, 1]
+        z_obj = npy_obj[:, 2]
 
         # The resolution of the grid
         x_grid = np.linspace(np.min(x_obj), np.max(x_obj), nx)
@@ -121,12 +135,15 @@ class AutoPcMap:
         grid_z0 = griddata(points, values, (grid_x, grid_y), method='nearest')
         rotated = ndimage.rotate(grid_z0, 90)
         frame = np.asarray(cv2.flip(rotated, 1))
+
         # plt.subplot(221), plt.imshow(frame, 'gray'), plt.title('ORIGINAL')
         # plt.show()
 
+        grid_z = grid_z0
+
         frame = cv2.normalize(frame, None, 0, 255, cv2.NORM_MINMAX)
 
-        return npy_obj, frame
+        return npy_obj, frame, [grid_x, grid_y, grid_z]
 
     def Brain2Img(self, npy_brain):
 
@@ -167,11 +184,16 @@ class AutoPcMap:
         # This function aims to register the image to the global framework
         # output: return a registration coefficient
         # Match the result using normalize cross correlation
+
+        # print(img_brain.shape)
+        # print(img_scan.shape)
+
         match_result = match_template(img_brain, img_scan)
 
         # min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(match_result)
         ij = np.unravel_index(np.argmax(match_result), match_result.shape)
         x, y = ij[::-1]
+        coeff_max = np.max(match_result)
 
         x_center = x + self.pixel_res/2
         y_center = y + self.pixel_res/2
@@ -182,53 +204,68 @@ class AutoPcMap:
         [Len_x, Len_y] = pixel2Len(p_center, img_brain, flag_type, model_Len)
 
         # viz the result on the image
-        top_left = (x, y)
-        bottom_right = (x_center + self.pixel_res/2, y_center + self.pixel_res/2)
-        cv2.rectangle(img_brain, top_left, bottom_right, (255,0,0), 15)
-        cv2.imshow('image', img_brain)
-        cv2.waitKey(0)
+        top_left = (np.int(x), np.int(y))
+        bottom_right = (np.int(x_center + self.pixel_res/2), np.int(y_center + self.pixel_res/2))
 
-        return [Len_x, Len_y], img_brain, img_scan
+        # print(top_left)
+        # print(bottom_right)
+        # bottom_right.astype(int)
+
+        # cv2.rectangle(img_brain, top_left, bottom_right, (255, 0, 0), 15)
+        # cv2.imshow('image', img_brain)
+        # cv2.waitKey(200)
+        # cv2.destroyAllWindows()
+
+        return [Len_x, Len_y], img_brain, img_scan, coeff_max
 
     # ICP to perform fine registration
     # Location of the laser spot (surgical tool) in the pMR image
 
+    def Multi_NIP(self):
+
+        # The data storage of all the results
+        DATA = []
+
+        # Load the target scan data
+        txtscan_x = '/home/mgs/PycharmProjects/BTL_GS/BTL_Data/ScanData(NonRotate)/9/Scan_x'
+        txtscan_y = '/home/mgs/PycharmProjects/BTL_GS/BTL_Data/ScanData(NonRotate)/9/Scan_y'
+        txtscan_z = '/home/mgs/PycharmProjects/BTL_GS/BTL_Data/ScanData(NonRotate)/9/Scan_z'
+
+        # Define the parameters for the scanning data
+        vtk_scan, npy_scan, scan_x, scan_y, scan_z = test.txt2pt(txtscan_x, txtscan_y, txtscan_z)
+        nx = 100
+        ny = 100
+
+        # Fix the scene image
+        img_brain = cv2.imread('/home/mgs/PycharmProjects/BTL_GS/BTL_Data/BrainImg/Source images/img_3D_box5_dis5_iter5_xy/0_0.png', 0)
+
+        # Begin the loop for this case
+        theta_x = 0
+        theta_y = 0
+        theta_z = 0
+        theta = [theta_x, theta_y, theta_z]
+
+        time_start = time.clock()
+        inter = 1
+        for i in range(90):
+
+            print(i)
+            theta_x += inter
+            theta = [theta_x, theta_y, theta_z]
+
+            npy_obj, frame = self.Scan2img(npy_scan, nx, ny, theta)
+            img_scan = frame
+
+            [Len_x, Len_y], img_brain, img_scan, coeff_max = test.ScanMapBrain(img_brain, img_scan)
+
+            data_use = [theta, [Len_x, Len_y], coeff_max]
+            DATA.append(data_use)
+
+        print(DATA)
+        time_elapsed = (time.clock() - time_start)
+        print(time_elapsed)
+
 if __name__ == "__main__":
 
-    # Test txt2pt
-    # test = AutoPcMap()
-    # txtscan_x = '/home/maguangshen/PycharmProjects/BTL_GS/Data/ScanData(NonRotate)/9/Scan_x'
-    # txtscan_y = '/home/maguangshen/PycharmProjects/BTL_GS/Data/ScanData(NonRotate)/9/Scan_y'
-    # txtscan_z = '/home/maguangshen/PycharmProjects/BTL_GS/Data/ScanData(NonRotate)/9/Scan_z'
-    # vtk_scan, npy_scan, scan_x, scan_y, scan_z = test.txt2pt(txtscan_x, txtscan_y, txtscan_z)
-    # vtk_data = DataConvert.npy2vtk(npy_scan)
-    # VizVtk([vtk_data])
-
-    # Test brain_init
-    # test = AutoPcMap()
-    # txtbrain_x = '/home/maguangshen/PycharmProjects/BTL_GS/Data/brain_x.txt'
-    # txtbrain_y = '/home/maguangshen/PycharmProjects/BTL_GS/Data/brain_y.txt'
-    # txtbrain_z = '/home/maguangshen/PycharmProjects/BTL_GS/Data/brain_z.txt'
-    # theta = [0, 0, 180]
-    # vtk_brain, pc_tform, pc_tform_x, pc_tform_y, pc_tform_z = test.Brain_Init(txtbrain_x, txtbrain_y, txtbrain_z, theta)
-
-    # Project the point cloud data to the plane
     test = AutoPcMap()
-    txtscan_x = '/home/maguangshen/PycharmProjects/BTL_GS/Data/ScanData(NonRotate)/9/Scan_x'
-    txtscan_y = '/home/maguangshen/PycharmProjects/BTL_GS/Data/ScanData(NonRotate)/9/Scan_y'
-    txtscan_z = '/home/maguangshen/PycharmProjects/BTL_GS/Data/ScanData(NonRotate)/9/Scan_z'
-
-    vtk_scan, npy_scan, scan_x, scan_y, scan_z = test.txt2pt(txtscan_x, txtscan_y, txtscan_z)
-    nx = 100; ny = 100
-    npy_obj, frame = test.Scan2img(npy_scan, nx, ny)
-
-    # vtk_data = DataConvert.npy2vtk(npy_obj)
-    # VizVtk([vtk_data])
-
-    img_brain = cv2.imread('/home/maguangshen/PycharmProjects/BTL_GS/Data/BrainImg/Source images/img_3D_box5_dis5_iter5_xy/0_0.png', 0)
-    img_scan = frame
-    # print(type(img_brain))
-    # print(type(img_scan))
-
-    [Len_x, Len_y], img_brain, img_scan = test.ScanMapBrain(img_brain, img_scan)
-
+    test.Multi_NIP()

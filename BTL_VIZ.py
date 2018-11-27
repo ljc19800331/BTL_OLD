@@ -3,10 +3,10 @@ import vtk
 import random
 import numpy as np
 import time
-import DataConvert
+import BTL_DataConvert
 import BTL_MAP
 from BTL_MAP import *
-from DataConvert import *
+from BTL_DataConvert import *
 
 class VtkPointCloud:
 
@@ -338,7 +338,7 @@ def ActorStl(stlname):
 
     # Input: stlname
     # Output: actor for the stl
-    filename = '/home/maguangshen/PycharmProjects/pcltest/Data/brain_tumor_scaled.stl'
+    # filename = '/home/maguangshen/PycharmProjects/pcltest/Data/brain_tumor_scaled.stl'
     # stlname = '/home/maguangshen/PycharmProjects/BTL_GS/Data/brain_tumor_scaled.stl'
     reader = vtk.vtkSTLReader()
     reader.SetFileName(stlname)
@@ -379,7 +379,7 @@ def ActorNpyColor(npy_data, vec_color):
         id = Points.InsertNextPoint(p_x, p_y, p_z)
         Vertices.InsertNextCell(1)
         Vertices.InsertCellPoint(id)
-        Colors.InsertNextTuple3(vec_color[0], vec_color[1], vec_color[2])
+        Colors.InsertNextTuple3(vec_color[i][0], vec_color[i][1], vec_color[i][2])
 
     polydata = vtk.vtkPolyData()
     polydata.SetPoints(Points)
@@ -389,7 +389,7 @@ def ActorNpyColor(npy_data, vec_color):
 
     # Set up the actor and mapper
     mapper = vtk.vtkPolyDataMapper()
-    mapper.SetInputData(polydata)
+    mapper.SetInput(polydata)
     actor = vtk.vtkActor()
     actor.SetMapper(mapper)
 

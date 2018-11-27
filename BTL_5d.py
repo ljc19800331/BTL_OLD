@@ -12,10 +12,11 @@ class BTL5D():
 
     def __init__(self):
         a = 1
+        self.w = 640
+        self.h = 480
         # self.cap = cv2.VideoCapture(1)
         # self.left = cv2.VideoCapture(0)
         # self.right = cv2.VideoCapture(1)
-
     def CamRealtime(self):
         # Capture the 2D image in realtime
         try:
@@ -38,34 +39,37 @@ class BTL5D():
             # Stop streaming
             self.cap.release()
             cv2.destroyAllWindows()
-
     def CaptureImg(self):
+
         # Capture the images for monocular image
         Path = '/home/maguangshen/PycharmProjects/BTL_GS/BTL_Data/CaptureImg/'
 
         # Define the resolution
-        CAMERA_WIDTH = 1280
-        CAMERA_HEIGHT = 720
+        CAMERA_WIDTH = self.w
+        CAMERA_HEIGHT = self.h
 
-        # Set the resolution
-        # self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
+        left = cv2.VideoCapture(0)
+        right = cv2.VideoCapture(1)
 
-        # Capture the frame in this field
-        frameID = 1
-        try:
-            while(True):
-                raw_input("Press enter to continue")
-                _, Frame = self.cap.read()
-                img_name = Path + str(frameID) + '.jpg'
-                print("Capture the %d image" % frameID)
-                # cv2.imwrite(img_name, Frame)
-                cv2.imshow('image', Frame)
-                cv2.waitKeyEx(0)
-                frameID += 1
-        finally:
-            self.cap.release()
-            cv2.destroyAllWindows()
+        # Increase the resolution
+        left.set(cv2.CAP_PROP_FRAME_WIDTH, CAMERA_WIDTH)
+        left.set(cv2.CAP_PROP_FRAME_HEIGHT, CAMERA_HEIGHT)
+        right.set(cv2.CAP_PROP_FRAME_WIDTH, CAMERA_WIDTH)
+        right.set(cv2.CAP_PROP_FRAME_HEIGHT, CAMERA_HEIGHT)
 
+        # Use MJPEG to avoid overloading the USB 2.0 bus at this resolution
+        left.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
+        right.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
+
+        # save the left image
+        _, Frame = left.read()
+        cv2.imwrite('test_left.jpg', Frame)
+        _, Frame = right.read()
+        cv2.imwrite('test_right.jpg', Frame)
+
+        left.release()
+        right.release()
+        cv2.destroyAllWindows()
     def CamCalibrate(self):
 
         # termination criteria
@@ -148,14 +152,12 @@ class BTL5D():
         print "total error: ", total_error / len(objpoints)
 
         return ret, mtx, dist, rvecs, tvecs
-
     def draw3DAxis(self, img, corners, imgpts):
         corner = tuple(corners[0].ravel())
         img = cv2.line(img, corner, tuple(imgpts[0].ravel()), (255, 0, 0), 5)
         img = cv2.line(img, corner, tuple(imgpts[1].ravel()), (0, 255, 0), 5)
         img = cv2.line(img, corner, tuple(imgpts[2].ravel()), (0, 0, 255), 5)
         return img
-
     def draw3DCube(self, img, corners, imgpts):
         imgpts = np.int32(imgpts).reshape(-1, 2)
 
@@ -170,7 +172,6 @@ class BTL5D():
         img = cv2.drawContours(img, [imgpts[4:]], -1, (0, 0, 255), 3)
 
         return img
-
     def PoseEstimation(self):
 
         # Obtain the camera matrix
@@ -213,7 +214,6 @@ class BTL5D():
                 # if k == 's':
                 #     cv2.imwrite(fname[:6] + '.png', img)
         cv2.destroyAllWindows()
-
     def Project2DTo3D(self):
 
         # Project 2D points from image to the 3D world coordinates
@@ -253,10 +253,10 @@ class BTL5D():
         print("The pts2D_InInv is ", pts2D_InInv)
         print("The pts2D_InInv_Tvec is ", pts2D_InInv_Tvec)
         print("The pts2D_InInv_Tvec_Rvec is ", pts2D_InInv_Tvec_Rvec)
-
     def StereoShow(self):
+
         # Show the stereo images in realtime
-        a = 1
+        # a = 1
         # left = cv2.VideoCapture(0)
         # right = cv2.VideoCapture(2)
         # print (cv2.VideoCapture)
@@ -266,10 +266,10 @@ class BTL5D():
         right = cv2.VideoCapture(1)
 
         # Increase the resolution
-        left.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
-        left.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
-        right.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
-        right.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+        left.set(cv2.CAP_PROP_FRAME_WIDTH, self.w)
+        left.set(cv2.CAP_PROP_FRAME_HEIGHT, self.h)
+        right.set(cv2.CAP_PROP_FRAME_WIDTH, self.w)
+        right.set(cv2.CAP_PROP_FRAME_HEIGHT, self.h)
 
         # Use MJPEG to avoid overloading the USB 2.0 bus at this resolution
         # usb bandwidth problem
@@ -293,8 +293,8 @@ class BTL5D():
         finally:
             left.release()
             right.release()
-
     def StereoCapImg(self):
+
         # Capture the images from
         # left = cv2.VideoCapture(0)
         # right = cv2.VideoCapture(2)
@@ -304,7 +304,7 @@ class BTL5D():
         left_dir = '/home/maguangshen/PycharmProjects/BTL_GS/BTL/Left/'
         right_dir = '/home/maguangshen/PycharmProjects/BTL_GS/BTL/Right/'
 
-        while(curr_frame < 11):
+        while(curr_frame < 21):
             # raw_input("press enter to continue")
             # click.pause()
 
@@ -313,10 +313,15 @@ class BTL5D():
             right = cv2.VideoCapture(1)
 
             # Increase the resolution
-            left.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
-            left.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
-            right.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
-            right.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+            left.set(cv2.CAP_PROP_FRAME_WIDTH, self.w)
+            left.set(cv2.CAP_PROP_FRAME_HEIGHT, self.h)
+            right.set(cv2.CAP_PROP_FRAME_WIDTH, self.w)
+            right.set(cv2.CAP_PROP_FRAME_HEIGHT, self.h)
+
+            # left.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+            # left.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+            # right.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+            # right.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
 
             # Use MJPEG to avoid overloading the USB 2.0 bus at this resolution
             # usb bandwidth problem
@@ -341,7 +346,18 @@ class BTL5D():
             left.release()
             right.release()
             curr_frame += 1
-
+    def StereoCalibrate_exp(self):
+        # use the example code for this problem
+        CHESSBOARD_SIZE = (9, 6)
+        CHESSBOARD_OPTIONS = (cv2.CALIB_CB_ADAPTIVE_THRESH |
+                              cv2.CALIB_CB_NORMALIZE_IMAGE | cv2.CALIB_CB_FAST_CHECK)
+        OBJECT_POINT_ZERO = np.zeros((CHESSBOARD_SIZE[0] * CHESSBOARD_SIZE[1], 3),
+                                     np.float32)
+        OBJECT_POINT_ZERO[:, :2] = np.mgrid[0:CHESSBOARD_SIZE[0],
+                                   0:CHESSBOARD_SIZE[1]].T.reshape(-1, 2)
+        OPTIMIZE_ALPHA = 0.25
+        TERMINATION_CRITERIA = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_MAX_ITER, 30,
+                                0.001)
     def StereoCalibrate(self, dirpath):
 
         # Calibrate the stereo camera
@@ -398,19 +414,18 @@ class BTL5D():
         print "total error: ", mean_error
 
         return ret, mtx, dist, rvecs, tvecs, mean_error, objpoints, imgpoints, imageSize
-
     def StereoRec(self):
 
-        # Stereo reconstruction
+        # Stereo reconstruction following the procedure
         # Define the calibration images
         leftpath = '/home/maguangshen/PycharmProjects/BTL_GS/BTL/Left/'
         rightpath = '/home/maguangshen/PycharmProjects/BTL_GS/BTL/Right/'
 
-        # Get the corresponding coeffcients
-        ret_left, mtx_left, dist_left, rvecs_left, tvecs_left, mean_error_left, objpoints_left, imgpoints_left, imageSize_left = self.StereoCalibrate(
-            leftpath)
-        ret_right, mtx_right, dist_right, rvecs_right, tvecs_right, mean_error_right, objpoints_right, imgpoints_right, imageSize_left = self.StereoCalibrate(
-            rightpath)
+        # Get the calibration coeffcients
+        ret_left, mtx_left, dist_left, rvecs_left, tvecs_left, mean_error_left, \
+        objpoints_left, imgpoints_left, imageSize_left = self.StereoCalibrate(leftpath)
+        ret_right, mtx_right, dist_right, rvecs_right, tvecs_right, mean_error_right, \
+        objpoints_right, imgpoints_right, imageSize_left = self.StereoCalibrate(rightpath)
 
         print("Calibrating cameras together...")
         objectPoints = objpoints_left       # This is a list object
@@ -438,10 +453,6 @@ class BTL5D():
             None, None, None, None, None,
             cv2.CALIB_ZERO_DISPARITY, OPTIMIZE_ALPHA)
 
-        # print "The leftRectification is ", leftRectification
-        # print "The leftProjection is ", leftProjection
-        # print "The image size is ", imageSize
-
         # print("Saving calibration...")
         leftMapX, leftMapY = cv2.initUndistortRectifyMap(
             mtx_left, dist_left, leftRectification,
@@ -450,19 +461,12 @@ class BTL5D():
             mtx_right, dist_right, rightRectification,
             rightProjection, imageSize, cv2.CV_32FC1)
 
-    #     return leftMapX, leftMapY, rightMapX, rightMapY, leftROI, rightROI
-    #
-    # def StereoViz(self):
-
-        # Get the parameters from StereoRec
-        # leftMapX, leftMapY, rightMapX, rightMapY, leftROI, rightROI = self.StereoRec()
-
         # linear interpolation
         REMAP_INTERPOLATION = cv2.INTER_LINEAR
         DEPTH_VISUALIZATION_SCALE = 2048
 
-        CAMERA_WIDTH = 1280
-        CAMERA_HEIGHT = 720
+        CAMERA_WIDTH = self.w
+        CAMERA_HEIGHT = self.h
 
         left = cv2.VideoCapture(0)
         right = cv2.VideoCapture(1)
@@ -486,35 +490,6 @@ class BTL5D():
         stereoMatcher.setSpeckleRange(16)
         stereoMatcher.setSpeckleWindowSize(45)
 
-        # while (True):
-        #
-        #     if not left.grab() or not right.grab():
-        #         print("No more frames")
-        #         break
-
-        # # Capture the left image
-        # _, leftFrame = left.read()
-        # leftHeight, leftWidth = leftFrame.shape[:2]
-        # cv2.imwrite('test_left.jpg', leftFrame)
-        #
-        # # Capture the right image
-        # _, rightFrame = right.read()
-        # rightHeight, rightWidth = rightFrame.shape[:2]
-        # cv2.imwrite('test_right.jpg', rightFrame)
-        #
-        # cv2.imshow('left', leftFrame)
-        # cv2.imshow('right', rightFrame)
-        # cv2.waitKey(0)
-        #
-        # # if (leftWidth, leftHeight) != imageSize:
-        # #     print("Left camera has different size than the calibration data")
-        # #     break
-        # #
-        # # if (rightWidth, rightHeight) != imageSize:
-        # #     print("Right camera has different size than the calibration data")
-        # #     break
-        #
-
         leftFrame = cv2.imread('/home/maguangshen/PycharmProjects/BTL_GS/BTL/test_left.jpg')
         rightFrame = cv2.imread('/home/maguangshen/PycharmProjects/BTL_GS/BTL/test_right.jpg')
 
@@ -525,13 +500,18 @@ class BTL5D():
         grayRight = cv2.cvtColor(fixedRight, cv2.COLOR_BGR2GRAY)
         #
         depth = stereoMatcher.compute(grayLeft, grayRight)
-        # # print "The depth is ", depth
+        #     print "The depth is ", depth
         #
         #     cv2.imshow('left', leftFrame)
         #     cv2.imshow('right', rightFrame)
         #     # cv2.waitKey(0)
-        #
+
+        print(depth)
+
         Q = dispartityToDepthMap
+
+        print(Q)
+
         points = cv2.reprojectImageTo3D(depth, Q)
         colors = leftFrame
 
@@ -543,33 +523,20 @@ class BTL5D():
         #     # cv2.waitKey(0)
         #     if cv2.waitKey(1) & 0xFF == ord('q'):
         #         break
-        #
-        # left.release()
-        # right.release()
-        # cv2.destroyAllWindows()
 
-    def StereoCalibrate_exp(self):
-        # use the example code for this problem
-        CHESSBOARD_SIZE = (9, 6)
-        CHESSBOARD_OPTIONS = (cv2.CALIB_CB_ADAPTIVE_THRESH |
-                              cv2.CALIB_CB_NORMALIZE_IMAGE | cv2.CALIB_CB_FAST_CHECK)
-        OBJECT_POINT_ZERO = np.zeros((CHESSBOARD_SIZE[0] * CHESSBOARD_SIZE[1], 3),
-                                     np.float32)
-        OBJECT_POINT_ZERO[:, :2] = np.mgrid[0:CHESSBOARD_SIZE[0],
-                                   0:CHESSBOARD_SIZE[1]].T.reshape(-1, 2)
-        OPTIMIZE_ALPHA = 0.25
-        TERMINATION_CRITERIA = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_MAX_ITER, 30,
-                                0.001)
+        left.release()
+        right.release()
+        cv2.destroyAllWindows()
 
 if __name__ == "__main__":
 
     test = BTL5D()
-    # test.StereoViz()
-    test.StereoRec()
-    # test.StereoCapImg()
-    # test.StereoShow()
     # test.CaptureImg()
     # test.CamRealtime()
+    # test.StereoCapImg()
+    # test.StereoViz()
+    test.StereoShow()
+    # test.StereoRec()
     # ret, mtx, dist, rvecs, tvecs = test.CamCalibrate()
     # test.PoseEstimation()
     # test.Project2DTo3D()

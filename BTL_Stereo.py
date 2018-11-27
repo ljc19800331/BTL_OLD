@@ -8,7 +8,7 @@ sys.path.append(os.path.abspath('/home/maguangshen/PycharmProjects/BTL_GS/BTL/St
 import point_cloud
 from multiprocessing import Pool
 import glob
-import DataConvert
+import BTL_DataConvert
 import BTL_VIZ
 
 class btl_stereo():

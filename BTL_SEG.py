@@ -10,8 +10,8 @@ from skimage.segmentation import mark_boundaries
 from skimage.util import img_as_float
 import time
 import argparse
-import DataConvert
-from DataConvert import *
+import BTL_DataConvert
+from BTL_DataConvert import *
 
 def KmeanClusterSeg():
 

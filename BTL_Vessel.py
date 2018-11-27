@@ -9,7 +9,7 @@
 # circle object detection -- focus on the image
 
 import vtk
-import pcl
+# import pcl
 import cv2
 
 def STLVessel():

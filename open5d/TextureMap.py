@@ -10,7 +10,7 @@ import BTL_VIZ
 from BTL_VIZ import *
 import matplotlib.pyplot as plt
 import BTL_VIZ
-from DataConvert import *
+from BTL_DataConvert import *
 import vtk
 
 class Feature3d:

@@ -15,8 +15,8 @@ import BTL_VIZ
 from BTL_VIZ import *
 import TextureMap
 from TextureMap import *
-import DataConvert
-from DataConvert import *
+import BTL_DataConvert
+from BTL_DataConvert import *
 
 # Configure depth and color streams
 pipeline = rs.pipeline()
