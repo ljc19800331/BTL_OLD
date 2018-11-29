@@ -1,162 +1,120 @@
-# Test the Powell optimization method
-# Goal: input any functions and return any good solutions
-import math
-import numpy as np
 
-def bracket(f, x1, h):
+# - compatibility with Python 2
+from __future__ import print_function  # print('me') instead of print 'me'
+from __future__ import division  # 1/2 == 0.5, not 0
 
-    # Find the search range only based on the x1, h and f (function)
-    # Find the bracket within this function
-    c = 1.618033989
+# - import common modules
+import numpy as np  # the Python array package
+import matplotlib.pyplot as plt  # the Python plotting package
 
-    # print("The f inside the function is ", f)
-    f1 = f(x1)
-    x2 = x1 + h
-    f2 = f(x2)
+# - set gray colormap and nearest neighbor interpolation by default
+plt.rcParams['image.cmap'] = 'gray'
+plt.rcParams['image.interpolation'] = 'nearest'
 
-    # Determine the downhill and change sign if needed
-    if f2 > f1:
-        h = -h
-        x2 = x1 + h
-        f2 = f(x2)
+import nibabel as nib
+t1_img = nib.load('/home/mgs/PycharmProjects/BTL_GS/BTL_Data/mni_icbm152_t1_tal_nlin_sym_09a.nii')
+t1_data = t1_img.get_data()
+t2_img = nib.load('/home/mgs/PycharmProjects/BTL_GS/BTL_Data/mni_icbm152_t2_tal_nlin_sym_09a.nii')
+t2_data = t2_img.get_data()
 
-        # check if minimum between x1 - h and x1 + h
-        if f2 > f1:
-            return x2, x1 - h
+# Show the images by stacking them left-right with hstack
+t1_slice = t1_data[:, :, 94]
+t2_slice = t2_data[:, :, 94]
+plt.imshow(np.hstack((t1_slice, t2_slice)))
 
-    for i in range(100):  # maximum 100 times
-        h = c * h
-        x3 = x2 + h
-        f3 = f(x3)
-        if f3 > f2:
-            return x1, x3
-        x1 = x2
-        x2 = x3
-        f1 = f2
-        f2 = f3
+# The one-dimensional histograms of the example slices:
 
-def Powell(F, x, h = 0.1, tol = 1.0e-6):
+fig, axes = plt.subplots(1, 2)
+axes[0].hist(t1_slice.ravel(), bins=20)
+axes[0].set_title('T1 slice histogram')
+axes[1].hist(t2_slice.ravel(), bins=20)
+axes[1].set_title('T2 slice histogram')
 
-    # Define a new function
-    def f(s):
-        return F(x + s * v)
+# Plotting the signal in the T1 slice against the signal in the T2 slice:
 
-    n = len(x)          # number of design variables
-    df = np.zeros(n)    # Decreases of F stored here
-    u = np.identity(n)  # Initial vectors here by rows
+plt.plot(t1_slice.ravel(), t2_slice.ravel(), '.')
+plt.xlabel('T1 signal')
+plt.ylabel('T2 signal')
+plt.title('T1 vs T2 signal')
+np.corrcoef(t1_slice.ravel(), t2_slice.ravel())[0, 1]
 
-    for j in range(30):
+# Array that is True if T1 signal >= 20, <= 30, False otherwise
+t1_20_30 = (t1_slice >= 20) & (t1_slice <= 30)
+# Show T1 slice, mask for T1 between 20 and 30, T2 slice
+fig, axes = plt.subplots(1, 3, figsize=(8, 3))
+axes[0].imshow(t1_slice)
+axes[0].set_title('T1 slice')
+axes[1].imshow(t1_20_30)
+axes[1].set_title('20<=T1<=30')
+axes[2].imshow(t2_slice)
+axes[2].set_title('T2 slice')
 
-        # Allow for only 30 cycles (loops) - maximum n times -- no less then 20 is good enough
-        # j is the number of iteration -- this is a good idea
+hist_2d, x_edges, y_edges = np.histogram2d(
+    t1_slice.ravel(),
+    t2_slice.ravel(),
+    bins=20)
+# Plot as image, arranging axes as for scatterplot
+# We transpose to put the T1 bins on the horizontal axis
+# and use 'lower' to put 0, 0 at the bottom of the plot
+plt.imshow(hist_2d.T, origin='lower')
+plt.xlabel('T1 signal bin')
+plt.ylabel('T2 signal bin')
 
-        xOld = x.copy()  # The input x is usually the xStart point
-        fOld = F(xOld)
+# The histogram is easier to see if we show the log values to reduce the effect
+# of the bins with a very large number of values:
 
-        # First n line searches record decreases of F -- followed by the last line search algorithm
-        for i in range(n):
+# Show log histogram, avoiding divide by 0
+hist_2d_log = np.zeros(hist_2d.shape)
+non_zeros = hist_2d != 0
+hist_2d_log[non_zeros] = np.log(hist_2d[non_zeros])
+plt.imshow(hist_2d_log.T, origin='lower')
+plt.xlabel('T1 signal bin')
+plt.ylabel('T2 signal bin')
 
-            # The initial direction on v -- This is im as well
-            v = u[i]
+def mutual_information(hgram):
+    """ Mutual information for joint histogram
+    """
+    # Convert bins counts to probability values
+    pxy = hgram / float(np.sum(hgram))
+    px = np.sum(pxy, axis=1) # marginal for x over y
+    py = np.sum(pxy, axis=0) # marginal for y over x
+    px_py = px[:, None] * py[None, :] # Broadcast to multiply marginals
+    # Now we can do the calculation using the pxy, px_py 2D arrays
+    nzs = pxy > 0 # Only non-zero pxy values contribute to the sum
+    return np.sum(pxy[nzs] * np.log(pxy[nzs] / px_py[nzs]))
 
-            # problem with this cas
-            a, b = bracket(f, 0.0, h)
+mutual_information(hist_2d)
 
-            # For the line search only
-            s, fMin = search(f, a, b, tol = 1.0e-9)
-            df[i] = fOld - fMin
-            fOld = fMin
-            x = x + s * v
+# If we move the T2 image 15 pixels down, we make the images less well
+# registered.
 
-        # Last line search in the cycle -- this is im -- why this works and how we can prove that?
-        v = x - xOld
+t2_slice_moved = np.zeros(t2_slice.shape)
+t2_slice_moved[15:, :] = t2_slice[:-15, :]
+plt.imshow(np.hstack((t1_slice, t2_slice_moved)))
 
-        # Problem with this sentence
-        a, b = bracket(f, 0.0, h)
-        s, fLast = search(f, a, b, tol = 1.0e-9)
-        x = x + s * v
+# Now the scatterplot is a lot more diffuse:
 
-        # Check for convergence
-        if math.sqrt(np.dot(x - xOld, x - xOld) / n) < tol:
-            return x, j + 1
+plt.plot(t1_slice.ravel(), t2_slice_moved.ravel(), '.')
+plt.xlabel('T1 signal')
+plt.ylabel('T2 (moved) signal')
+plt.title('T1 vs T2 signal after moving T2 image')
 
-        # Identify biggest decrease
-        iMax = np.argmax(df)
+# The joint (2D) histogram shows the same thing:
 
-        # update search directions
-        for i in range(iMax, n - 1):
-            u[i] = u[i + 1]
+hist_2d_moved, x_edges, y_edges = np.histogram2d(
+    t1_slice.ravel(),
+    t2_slice_moved.ravel(),
+    bins=20)
 
-        u[n - 1] = v
+# Show log histogram, avoiding divide by 0
+hist_2d_moved_log = np.zeros(hist_2d_moved.shape)
+non_zeros = hist_2d_moved != 0
+hist_2d_moved_log[non_zeros] = np.log(hist_2d_moved[non_zeros])
+plt.imshow(hist_2d_moved_log.T, origin='lower')
+plt.xlabel('T1 signal bin')
+plt.ylabel('T2 signal bin')
 
-    print("Powell did not converge")
+# Because the signal is less concentrated into a small number of bins, the
+# mutual information has dropped:
 
-def search(f, a, b, tol = 1.0e-9):
-
-    # Initial position
-    # Calculate the total iteration numbers
-    nIter = int(math.ceil(-2.078087*math.log(tol/abs(b-a))))
-    R = 0.618033989
-    C = 1.0 - R
-
-    # First telescoping -- Define the golden length
-    x1 = R * a + C * b
-    x2 = C * a + R * b
-    f1 = f(x1)
-    f2 = f(x2)
-
-    # Main loop
-    for i in range(nIter):
-
-        if f1 > f2:
-            a = x1
-            x1 = x2
-            f1 = f2
-            x2 = C * a + R * b
-            f2 = f(x2)
-        else:
-            b = x2
-            x2 = x1
-            f2 = f1
-            x1 = R * a + C * b
-            f1 = f(x1)
-    if f1 < f2:
-        return x1, f1
-    else:
-        return x2, f2
-
-def test_1():
-
-    # Test the golden line function
-    def f(x, x_test, v_test):
-        lam = 1.0
-        c = min(0.0, x)
-        return 1.6 * x ** 3 + 3.0 * x ** 2 - 2.0 * x + lam * c ** 2
-
-    x_test = 0
-    v_test = 0
-
-    xStart = 1.0
-    h = 0.01
-    x1, x2 = bracket(f, xStart, h, x_test, v_test)
-    x, fMin = search(f, x1, x2, x_test, v_test)
-    print("x =", x)
-    print("f(x) =", fMin)
-    input("\nPress return to exit")
-
-def test_2():
-
-    def F(x):
-        return x[0] * x[0] + 2 * x[1] * x[1] - 4 * x[0] - 2 * x[0] * x[1]
-
-    xStart = np.array([1.0, 1.0])
-    xMin, nIter = Powell(F, xStart)
-
-    print("x =", xMin)
-    print("F(x) =", F(xMin))
-    print("Number of cycles =", nIter)
-    input("Press return to exit")
-
-if __name__ == "__main__":
-
-    test_2()
+mutual_information(hist_2d_moved)

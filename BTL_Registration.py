@@ -11,19 +11,19 @@ from open3d import *
 class BrainRegis():
 
     def __init__(self):
-        self.filename_brain = '/home/maguangshen/PycharmProjects/BTL_GS/BTL_Data/BrainData/brain_shell.stl'
-        self.filename_brain_x = '/home/maguangshen/PycharmProjects/BTL_GS/BTL_Data/brain_x.txt'
-        self.filename_brain_y = '/home/maguangshen/PycharmProjects/BTL_GS/BTL_Data/brain_y.txt'
-        self.filename_brain_z = '/home/maguangshen/PycharmProjects/BTL_GS/BTL_Data/brain_z.txt'
-        self.brain_npy = np.load('/home/maguangshen/PycharmProjects/BTL_GS/BTL_Data/brain_npy.npy')
-        self.filename_brain_pcd = '/home/maguangshen/PycharmProjects/BTL_GS/BTL_Data/brain_pcd.pcd'
-        self.filename_scan_pcd = '/home/maguangshen/PycharmProjects/BTL_GS/BTL_Data/scan_pcd.pcd'
-        self.filename_brain_ply = '/home/maguangshen/PycharmProjects/BTL_GS/BTL_Data/brain.ply'
-        self.filename_scan_ply = '/home/maguangshen/PycharmProjects/BTL_GS/BTL_Data/scan.ply'
+        self.filename_brain = '/home/mgs/PycharmProjects/BTL_GS/BTL_Data/BrainData/brain_shell.stl'
+        self.filename_brain_x = '/home/mgs/PycharmProjects/BTL_GS/BTL_Data/brain_x.txt'
+        self.filename_brain_y = '/home/mgs/PycharmProjects/BTL_GS/BTL_Data/brain_y.txt'
+        self.filename_brain_z = '/home/mgs/PycharmProjects/BTL_GS/BTL_Data/brain_z.txt'
+        self.brain_npy = np.load('/home/mgs/PycharmProjects/BTL_GS/BTL_Data/brain_npy.npy')
+        self.filename_brain_pcd = '/home/mgs/PycharmProjects/BTL_GS/BTL_Data/brain_pcd.pcd'
+        self.filename_scan_pcd = '/home/mgs/PycharmProjects/BTL_GS/BTL_Data/scan_pcd.pcd'
+        self.filename_brain_ply = '/home/mgs/PycharmProjects/BTL_GS/BTL_Data/brain.ply'
+        self.filename_scan_ply = '/home/mgs/PycharmProjects/BTL_GS/BTL_Data/scan.ply'
 
-        self.filename_scan_x = '/home/maguangshen/PycharmProjects/BTL_GS/BTL_Data/ScanData(NonRotate)/8/Scan_x'
-        self.filename_scan_y = '/home/maguangshen/PycharmProjects/BTL_GS/BTL_Data/ScanData(NonRotate)/8/Scan_y'
-        self.filename_scan_z = '/home/maguangshen/PycharmProjects/BTL_GS/BTL_Data/ScanData(NonRotate)/8/Scan_z'
+        self.filename_scan_x = '/home/mgs/PycharmProjects/BTL_GS/BTL_Data/ScanData(NonRotate)/8/Scan_x'
+        self.filename_scan_y = '/home/mgs/PycharmProjects/BTL_GS/BTL_Data/ScanData(NonRotate)/8/Scan_y'
+        self.filename_scan_z = '/home/mgs/PycharmProjects/BTL_GS/BTL_Data/ScanData(NonRotate)/8/Scan_z'
 
     def SurfaceMatch(self):
         # This is for the surface matching algorithms
@@ -52,12 +52,12 @@ class BrainRegis():
             OBJ[idx, 2] = float(a_z[0])
 
         return OBJ
-        # np.save('/home/maguangshen/PycharmProjects/BTL_GS/BTL_Data/brain_npy', brain)
+        # np.save('/home/mgs/PycharmProjects/BTL_GS/BTL_Data/brain_npy', brain)
 
     def CutRegion(self):
 
         # Crop some regions from the object for registration
-        source_load = open3d.read_point_cloud('/home/maguangshen/PycharmProjects/BTL_GS/BTL_Data/brain.ply')
+        source_load = open3d.read_point_cloud('/home/mgs/PycharmProjects/BTL_GS/BTL_Data/brain.ply')
 
         source = self.xyz2npy(self.filename_brain_x, self.filename_brain_y, self.filename_brain_z)
 
@@ -98,7 +98,7 @@ class BrainRegis():
         print(xyz.shape)
         pcd = open3d.PointCloud()
         pcd.points = open3d.Vector3dVector(xyz)
-        open3d.write_point_cloud("/home/maguangshen/PycharmProjects/BTL_GS/BTL_Data/brain_cube.ply", pcd)
+        open3d.write_point_cloud("/home/mgs/PycharmProjects/BTL_GS/BTL_Data/brain_cube.ply", pcd)
         open3d.draw_geometries([pcd])
 
     def Test(self):
@@ -146,10 +146,10 @@ class BrainRegis():
         scan_pcd = open3d.PointCloud()
         brain_pcd.points = open3d.Vector3dVector(brain_npy)
         scan_pcd.points = open3d.Vector3dVector(scan_npy)
-        open3d.draw_geometries([brain_pcd, scan_pcd])
 
-        # open3d.write_point_cloud("/home/maguangshen/PycharmProjects/BTL_GS/BTL_Data/brain.ply", brain_pcd)
-        # open3d.write_point_cloud("/home/maguangshen/PycharmProjects/BTL_GS/BTL_Data/scan.ply", scan_pcd)
+        # open3d.draw_geometries([brain_pcd, scan_pcd])
+        # open3d.write_point_cloud("/home/mgs/PycharmProjects/BTL_GS/BTL_Data/brain.ply", brain_pcd)
+        # open3d.write_point_cloud("/home/mgs/PycharmProjects/BTL_GS/BTL_Data/scan.ply", scan_pcd)
 
         return brain_pcd, scan_pcd
 
@@ -185,8 +185,8 @@ class BrainRegis():
     def TestSurfaceMatching(self):
         a = 1
         # Load the model and the scene
-        # model = open3d.read_point_cloud("/home/maguangshen/PycharmProjects/BTL_GS/BTL_Data/test_1.ply")
-        # scene = open3d.read_point_cloud("/home/maguangshen/PycharmProjects/BTL_GS/BTL_Data/test_4.ply")
+        # model = open3d.read_point_cloud("/home/mgs/PycharmProjects/BTL_GS/BTL_Data/test_1.ply")
+        # scene = open3d.read_point_cloud("/home/mgs/PycharmProjects/BTL_GS/BTL_Data/test_4.ply")
         # open3d.draw_geometries([scene])
 
         modelp = cv2.ppf_match_3d.loadPLYSimple('test_1.ply', 0)
@@ -250,11 +250,11 @@ class FPFH:
 
         print(":: Load two point clouds and disturb initial pose.")
 
-        # source = open3d.read_point_cloud("/home/maguangshen/PycharmProjects/BTL_GS/BTL_Data/scan_pcd.pcd")
-        # target = open3d.read_point_cloud("/home/maguangshen/PycharmProjects/BTL_GS/BTL_Data/brain_pcd.pcd")
+        # source = open3d.read_point_cloud("/home/mgs/PycharmProjects/BTL_GS/BTL_Data/scan_pcd.pcd")
+        # target = open3d.read_point_cloud("/home/mgs/PycharmProjects/BTL_GS/BTL_Data/brain_pcd.pcd")
 
-        source = open3d.read_point_cloud("/home/maguangshen/PycharmProjects/BTL_GS/BTL_Data/brain.pcd")
-        target = open3d.read_point_cloud("/home/maguangshen/PycharmProjects/BTL_GS/BTL_Data/brain_cube.pcd")
+        source = open3d.read_point_cloud("/home/mgs/PycharmProjects/BTL_GS/BTL_Data/brain.pcd")
+        target = open3d.read_point_cloud("/home/mgs/PycharmProjects/BTL_GS/BTL_Data/brain_cube.pcd")
 
         # Intial the translation
         trans_init = np.asarray([[0.0, 0.0, 1.0, 0.0],

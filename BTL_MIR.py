@@ -66,12 +66,26 @@
 # 3. Cost function definition module
 # 4. Mutual information module
 # 5. Registration process module
+
+# Specific implementation:
+# 1. GridPatch -- Design the grid for the volume -- finished
+    # Label the voxel ID -- finished
+    # Set the default grid size -- bound region size
+# 2. 3D Feature -- Calculate the 3D feature within the 3D voxel -- This is 1D feature
+    # The number of points within the grid
+    # The order of the voxel grid
+    # The variance of the 3D point sets within the grid
+    # The histogram corresponding to the voxel ID
+# 3. Mutual information -- Calculate the mutual information based on the joint histogram
+    # The transform function
+# 4. Register voxelized images
+
 import open3d
-from open3d import *
 import numpy as np
 import BTL_DataConvert
 import BTL_MAP
 import math
+from open3d import *
 
 class MIR():
 
@@ -458,7 +472,9 @@ def DepthToPc(depth_img, Range_all):
 if __name__ == "__main__":
 
     test = MIR()
-    test.test()
+
+    # test = MIR()
+    # test.test()
 
     # test.DataUpsample()
     # test.Optimize_Powell()

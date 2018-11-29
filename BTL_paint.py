@@ -105,8 +105,9 @@ ROI[:,1] = y_roi
 ROI = np.array(ROI, dtype = np.int32)
 
 print(ROI)
+cv2.imwrite('/home/mgs/PycharmProjects/BTL_GS/BTL_Data/Brain_texture.jpg', masked_image)
+#　cv2.imwrite('C:/Users/gm143/Documents/MATLAB/BTL/Data/exp_1/pos_12/before/mask.png', mask)
 
-cv2.imwrite('C:/Users/gm143/Documents/MATLAB/BTL/Data/exp_1/pos_12/before/mask.png', mask)
 cv2.imshow('masked image', masked_image)
 cv2.waitKey()
 cv2.destroyAllWindows()
