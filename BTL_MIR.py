@@ -127,11 +127,15 @@ class Register():
 
     def MutualInf_Img(self):
 
-        # Mutual information for 2D image only
+        # Load the 2D image
+
+
+
+        # Set the affine transformation
+
+        # Optimization
         a = 1
 
-        # This is a nice
-        a = 1
 
     def MutualInf(self, obj_A, obj_B):
 
