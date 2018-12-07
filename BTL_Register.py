@@ -37,6 +37,7 @@ import cv2
 from rotations import *
 from scipy.ndimage import affine_transform
 import scipy.io as sio
+import sys
 
 class MultiRegister():
 
@@ -74,11 +75,12 @@ class MultiRegister():
 
         count_iter = 0
         data_iter = []
+        plt.ion()
 
         for j in range(30):
 
             count_iter += 1
-            # print(count_iter)
+            print(count_iter)
 
             xOld = x.copy()  # The input x is usually the xStart point
             fOld = F(obj_A, obj_B, x)  # This is not correct -- F(obj_A, obj_B, xOld)
@@ -112,6 +114,15 @@ class MultiRegister():
             a, b = bracket(f, 0.0, h)
             s, fLast = Glodensearch(f, a, b, tol=1.0e-9)
             x = x + s * v
+
+            # Show the realtime image
+            rows, cols = obj_A.shape
+            M = np.float32([[x[0], x[1], x[2]], [x[3], x[4], x[5]]])
+            Img_out = cv2.warpAffine(self.obj_B, M, (cols, rows))
+            img_color = ShowPair(self.obj_A, Img_out)
+            plt.imshow(img_color)
+            plt.pause(0.001)
+            plt.show()
 
             # Check for convergence
             if math.sqrt(np.dot(x - xOld, x - xOld) / n) < tol:
@@ -158,12 +169,18 @@ class MultiRegister():
         print("The initial mutual information is ", MI)
 
         # Optimization
-        x = [1, 0, 0, 0, 1, 0]
+        x = [1, 0, 30, 0, 1, 30]
         x_Res, N_iter = self.Powell_Img(self.CostFunction_Img, x, self.obj_A, self.obj_B, h = 0.1, tol = 10e-6)
         print("The final registration parameter is ", x_Res)
         M = np.float32([[x_Res[0], x_Res[1], x_Res[2]], [x_Res[3], x_Res[4], x_Res[5]]])
         Img_out = cv2.warpAffine(self.obj_B, M, (cols, rows))
-        # ShowPair(self.obj_A, Img_out)
+
+        img_final = ShowPair(self.obj_A, Img_out)
+        cv2.imshow('figure5', img_final)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+        # plt.imshow(img_final)
+        # plt.show()
         # plt.imshow(np.hstack((self.obj_A, Img_out)))
         # plt.show()
 
@@ -738,6 +755,7 @@ def show_images(images, cols=1, titles=None):
     plt.show()
 
 def ShowPair(Img_1, Img_2):
+
     # img = cv2.imread('/home/mgs/PycharmProjects/BTL_GS/BTL_Data/Brain_cortex.jpg',0)
     rows, cols = Img_1.shape
     M = cv2.getRotationMatrix2D((cols / 2, rows / 2), 2, 1)
@@ -756,9 +774,10 @@ def ShowPair(Img_1, Img_2):
     im_falsecolor_b = cv2.LUT(diff, lut[:, 0, 2])
     im_falsecolor = np.dstack((im_falsecolor_r, im_falsecolor_g, im_falsecolor_b))
 
-    plt.imshow(im_falsecolor)
-    plt.show()
+    # plt.imshow(im_falsecolor)
+    # plt.show()
 
+    return im_falsecolor
     # cv2.imshow('figure5', im_falsecolor)
     # cv2.waitKey(0)
     # cv2.destroyAllWindows()
@@ -766,14 +785,15 @@ def ShowPair(Img_1, Img_2):
 if __name__ == "__main__":
 
     # Test the 2D image
-    # test = MultiRegister()
-    # x_init = [1, 0, 0, 0, 1, 0]
-    # test.TestImgRgs(x_init)
+    test = MultiRegister()
+    x_init = [1, 0, 0, 0, 1, 0]
+    # x_init = sys.argv[1]
+    test.TestImgRgs(x_init)
 
     # Test the 3D image
-    test = MultiRegister()
-    x_init = [0, 0, 0, 5, 5, -5]
-    test.TestImg3D(x_init)
+    # test = MultiRegister()
+    # x_init = [0, 0, 0, 5, 5, -5]
+    # test.TestImg3D(x_init)
 
     # Test the 3D point cloud algorithm -- not im here
     # x_init = [0.1, 0.1, 0.2, 10, 10, -10]
