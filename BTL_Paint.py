@@ -54,7 +54,7 @@ def draw_circle(event, x, y, flags, param):
         if mode == True:
             cv2.circle(img, (x, y), 5, (255, 0, 0), -1)
 
-img = cv2.imread('/home/mgs/PycharmProjects/BTL_GS/BTL_Data/Brain_cortex.jpg', 1)
+img = cv2.imread('/home/mgs/PycharmProjects/BTL_GS/BTL_Data/brain_grid.jpg', 1)
 img_grey = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
 [h, w] = img_grey.shape

@@ -57,9 +57,9 @@ class VtkSimulateScan():
 
     def __init__(self):
         self.a = 1
-        self.txtbrain_x = '/home/maguangshen/PycharmProjects/pcltest/Data/brain_x.txt'
-        self.txtbrain_y = '/home/maguangshen/PycharmProjects/pcltest/Data/brain_y.txt'
-        self.txtbrain_z = '/home/maguangshen/PycharmProjects/pcltest/Data/brain_z.txt'
+        self.txtbrain_x = '/home/mgs/PycharmProjects/BTL_GS/BTL_Data/brain_x.txt'
+        self.txtbrain_y = '/home/mgs/PycharmProjects/BTL_GS/BTL_Data/brain_y.txt'
+        self.txtbrain_z = '/home/mgs/PycharmProjects/BTL_GS/BTL_Data/brain_z.txt'
 
     def PointUpdate(self, npy_data, x_pos, y_pos):
 
@@ -69,7 +69,7 @@ class VtkSimulateScan():
         # Update each step for the point sets
 
         # Set the point region
-        range = 0.025
+        range = 0.5
         x_range = [x_pos - range, x_pos + range]
         y_range = [y_pos - range, y_pos + range]
 
@@ -89,7 +89,7 @@ class VtkSimulateScan():
         z_mean = np.mean(y_obj[:,2])
         spot_idx = np.transpose(np.array(np.where(y_obj[:, 2] > z_mean)))
         npy_spot = np.reshape(y_obj[spot_idx, :], (len(spot_idx), 3))
-        vtk_spot = npy2vtk(npy_spot)
+        vtk_spot = BTL_DataConvert.npy2vtk(npy_spot)
 
         return vtk_spot, npy_spot
 
@@ -195,7 +195,7 @@ class VtkSimulateScan():
         camera_1.SetFocalPoint(0, 0, 0)
 
         # Design the actors
-        stlname = '/home/maguangshen/PycharmProjects/BTL_GS/Data/brain_tumor_scaled.stl'
+        stlname = '/home/mgs/PycharmProjects/BTL_GS/BTL_Data/brain_tumor_scaled.stl'
         actor_stl = ActorStl(stlname)
 
         # Design the renderer
@@ -238,7 +238,7 @@ class VtkSimulateScan():
             vtk_spot, npy_spot = self.PointUpdate(npy_brain, x_center, y_center)
             actor_spot = ActorNpyColor(npy_spot, vec_color=[255, 0, 0])
 
-            # Convert the points to the visible spot
+            # Convert the points to the visible spot -- a spherical ball model
             sphereSource = vtk.vtkSphereSource()
             sphereSource.SetCenter(np.mean (npy_spot[:,0]), np.mean (npy_spot[:,1]), np.mean (npy_spot[:,2]))
             sphereSource.SetRadius(0.05)
@@ -302,8 +302,9 @@ def VizVtk(vtk_list):
     renderWindow.Render()
     renderWindowInteractor.Start()
 
-def VizActor(actor_list):
+def VizActorCamShot(actor_list, Cam, N_shot):
 
+    # Take a screen shot for the image
     transform = vtk.vtkTransform()  # transformation of a 3D axis
     transform.Translate(0.0, 0.0, 0.0)  # Remain the default setting
     axes = vtk.vtkAxesActor()  # Add the axis actor
@@ -311,17 +312,102 @@ def VizActor(actor_list):
 
     # Renderer -- with a loop
     renderer = vtk.vtkRenderer()
-    renderer.SetBackground(.2, .3, .4)  # set background color
+    renderer.SetBackground(.2, .3, .4)  # Set background color
+
+    # Define the camera object
+    renderer.SetActiveCamera(Cam)
+
     renderer.ResetCamera()
     renderer.AddActor(axes)
     for item in actor_list:
         renderer.AddActor(item)
+
     # Render Window
     renderWindow = vtk.vtkRenderWindow()
     renderWindow.AddRenderer(renderer)
+
     # Interactor
     renderWindowInteractor = vtk.vtkRenderWindowInteractor()
     renderWindowInteractor.SetRenderWindow(renderWindow)
+
+    # Begin Interaction
+    renderWindow.Render()
+
+    # Define the screen shot operator
+    w2if = vtk.vtkWindowToImageFilter()
+    w2if.SetInput(renderWindow)
+    w2if.Update()
+
+    img_savepath = '/home/mgs/PycharmProjects/BTL_GS/BTL_Data/ScreenShot/' + str(N_shot) + '.png'
+
+    writer = vtk.vtkPNGWriter()
+    writer.SetFileName(img_savepath)
+    writer.SetInputData(w2if.GetOutput())
+    writer.Write()
+
+    renderWindowInteractor.Start()
+    # close_window(renderWindowInteractor)
+
+def close_window(iren):
+    render_window = iren.GetRenderWindow()
+    render_window.Finalize()
+    iren.TerminateApp()
+    del render_window, iren
+
+def VizActorCam(actor_list, Cam):
+
+    transform = vtk.vtkTransform()      # transformation of a 3D axis
+    transform.Translate(0.0, 0.0, 0.0)  # Remain the default setting
+    axes = vtk.vtkAxesActor()           # Add the axis actor
+    axes.SetUserTransform(transform)
+
+    # Renderer -- with a loop
+    renderer = vtk.vtkRenderer()
+    renderer.SetBackground(.2, .3, .4)  # Set background color
+
+    # Define the camera object
+    renderer.SetActiveCamera(Cam)
+
+    renderer.ResetCamera()
+    renderer.AddActor(axes)
+    for item in actor_list:
+        renderer.AddActor(item)
+
+    # Render Window
+    renderWindow = vtk.vtkRenderWindow()
+    renderWindow.AddRenderer(renderer)
+
+    # Interactor
+    renderWindowInteractor = vtk.vtkRenderWindowInteractor()
+    renderWindowInteractor.SetRenderWindow(renderWindow)
+
+    # Begin Interaction
+    renderWindow.Render()
+    renderWindowInteractor.Start()
+
+def VizActor(actor_list):
+
+    transform = vtk.vtkTransform()      # transformation of a 3D axis
+    transform.Translate(0.0, 0.0, 0.0)  # Remain the default setting
+    axes = vtk.vtkAxesActor()           # Add the axis actor
+    axes.SetUserTransform(transform)
+
+    # Renderer -- with a loop
+    renderer = vtk.vtkRenderer()
+    renderer.SetBackground(.2, .3, .4)  # Set background color
+    renderer.ResetCamera()
+    renderer.AddActor(axes)
+    for item in actor_list:
+        renderer.AddActor(item)
+
+    # Render Window
+    renderWindow = vtk.vtkRenderWindow()
+    renderWindow.AddRenderer(renderer)
+
+    # Interactor
+    renderWindowInteractor = vtk.vtkRenderWindowInteractor()
+    renderWindowInteractor.SetRenderWindow(renderWindow)
+
     # Begin Interaction
     renderWindow.Render()
     renderWindowInteractor.Start()
@@ -351,15 +437,77 @@ def ActorStl(stlname):
     actor.SetMapper(mapper)
     return actor
 
+def ActorNpyColorMesh(npy_data, vec_color):
+
+    # input: npy matrix and the color vector
+    # output: actor
+
+    # from npy to array
+    x = npy_data[:, 0]
+    y = npy_data[:, 1]
+    z = npy_data[:, 2]
+
+    # Set up the point and vertices
+    Points = vtk.vtkPoints()
+    # Vertices = vtk.vtkCellArray()
+    Triangles = vtk.vtkCellArray()
+
+    # Set up the color objects
+    Colors = vtk.vtkUnsignedCharArray()
+    Colors.SetNumberOfComponents(3)
+    Colors.SetName("Colors")
+    length = int(len(x))
+
+    # Set up the point and vertice object
+    for i in range(length):
+        p_x = x[i]
+        p_y = y[i]
+        p_z = z[i]
+
+        id = Points.InsertNextPoint(p_x, p_y, p_z)
+        # Vertices.InsertNextCell(1)
+        # Vertices.InsertCellPoint(id)
+        print("The id is ", id)
+
+        Triangle = vtk.vtkTriangle()
+        Triangle.GetPointIds().SetId(0, id)
+        Triangle.GetPointIds().SetId(1, id)
+        Triangle.GetPointIds().SetId(2, id)
+        Triangles.InsertNextCell(Triangle)
+
+        Colors.InsertNextTuple3(vec_color[i][0], vec_color[i][1], vec_color[i][2])
+
+    # Define the
+    polydata = vtk.vtkPolyData()
+    polydata.SetPoints(Points)
+    polydata.SetPolys(Triangles)
+
+    # polydata.SetVerts(Vertices)
+    polydata.GetPointData().SetScalars(Colors)  # Set the color points for the problem
+    polydata.Modified()
+
+    # Set up the actor and mapper
+    mapper = vtk.vtkPolyDataMapper()
+    mapper.SetInputData(polydata)
+    actor = vtk.vtkActor()
+    actor.SetMapper(mapper)
+
+    writer = vtk.vtkXMLPolyDataWriter()
+    writer.SetFileName('test_1.vtp')
+    writer.SetInputData(polydata)
+    writer.Write()
+
+    return actor
+
 def ActorNpyColor(npy_data, vec_color):
 
     # input: npy matrix and the color vector
     # output: actor
 
     # from npy to array
-    x = npy_data[:,0]
-    y = npy_data[:,1]
-    z = npy_data[:,2]
+    x = npy_data[:, 0]
+    y = npy_data[:, 1]
+    z = npy_data[:, 2]
 
     # Set up the point and vertices
     Points = vtk.vtkPoints()
@@ -379,7 +527,10 @@ def ActorNpyColor(npy_data, vec_color):
         id = Points.InsertNextPoint(p_x, p_y, p_z)
         Vertices.InsertNextCell(1)
         Vertices.InsertCellPoint(id)
-        Colors.InsertNextTuple3(vec_color[i][0], vec_color[i][1], vec_color[i][2])
+        if len(vec_color) > 3: # a color vector
+            Colors.InsertNextTuple3(vec_color[i][0], vec_color[i][1], vec_color[i][2])
+        else:
+            Colors.InsertNextTuple3(vec_color[0], vec_color[1], vec_color[2])
 
     polydata = vtk.vtkPolyData()
     polydata.SetPoints(Points)
@@ -389,7 +540,7 @@ def ActorNpyColor(npy_data, vec_color):
 
     # Set up the actor and mapper
     mapper = vtk.vtkPolyDataMapper()
-    mapper.SetInput(polydata)
+    mapper.SetInputData(polydata)
     actor = vtk.vtkActor()
     actor.SetMapper(mapper)
 

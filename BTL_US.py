@@ -21,7 +21,7 @@ class IV_USVision():
         left = self.monitor["left"] + self.monitor["width"] * 5 // 100  # 5% from the left
         top = self.monitor["top"] + self.monitor["height"] * 5 // 100   # 5% from the top
         right = left + 1000                     # 400px width
-        lower = top + 400                       # 400px height
+        lower = top + 800                       # 400px height
         self.bbox = (left, top, right, lower)   # Define the bounding box
 
     def ScreenShot(self):
@@ -50,6 +50,7 @@ class IV_USVision():
         while 1:
             sct_img = sct.grab(self.bbox)
             img = np.asarray(sct_img)
+            print(img.shape)
             cv2.imshow('screen', np.array(img))
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 cv2.destroyAllWindows()
@@ -76,7 +77,7 @@ class IV_USVision():
             frame_flag += 1
 
         PathOut = '/home/mgs/PycharmProjects/BTL_GS/BTL/video.avi'
-        fps = 10
+        fps = 30
         # cv2.VideoWriter_fourcc(*'DIVX')
         # cv2.cv.CV_FOURCC(*'XVID')
         out = cv2.VideoWriter(PathOut, cv2.VideoWriter_fourcc(*'XVID'), fps, size)
@@ -110,8 +111,8 @@ class IV_USVision():
 if __name__ == "__main__":
 
     test = IV_USVision()
-    test.VideoCapture()
+    # test.VideoCapture()
     # test.ScreenShot()
     # fps = test.ScreenRecordEfficient()
     # print(fps)      # The fps can reached to 33 -- solved the problem
-    # test.RealtimeShot()
+    test.RealtimeShot()

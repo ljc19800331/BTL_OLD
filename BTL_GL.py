@@ -29,6 +29,7 @@ The camera viewpoint
 Reference:
 1. Textured mapping in Python: https://plot.ly/~empet/14172/mapping-an-image-on-a-surface/#/
 2. https://gist.github.com/somada141/acefac8a6360cba21f3a   -- the most important reference
+3. KDtree - https://stackoverflow.com/questions/10818546/finding-index-of-nearest-point-in-numpy-arrays-of-x-and-y-coordinates
 
 Problem:
 1. resample the brain cortical surface -- add the number of points
@@ -38,6 +39,10 @@ Problem:
 5. Try with opengl -- this is im -- possibility of doing that
 6. Blender for UV texture mapping
 7. stl based method for stl textured mapping
+
+Next step:
+1. Change of the camera view point
+
 '''
 import cv2
 import open3d
@@ -46,16 +51,22 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.interpolate import griddata
 from BTL_DataConvert import *
+import BTL_VIZ
 from BTL_VIZ import *
 import BTL_GL
 from scipy.spatial import cKDTree
+import vtki
 
 class BTL_GL():
 
     def __init__(self):
-        self.img_path = "/home/mgs/PycharmProjects/BTL_GS/BTL_Data/Brain_Cortical_Scale.jpg"
-        self.pc_path = "/home/mgs/PycharmProjects/BTL_GS/BTL_Data/brain.ply"
-        self.stl_path = '/home/mgs/PycharmProjects/BTL_GS/BTL_Data/brain_slice.stl'
+        self.img_path = "/home/mgs/PycharmProjects/BTL_GS/BTL_Data/brain_texture.jpg"
+        self.pc_path = "/home/mgs/PycharmProjects/BTL_GS/BTL_Data/others/brain.ply"
+        self.stl_path = '/home/mgs/PycharmProjects/BTL_GS/BTL_Data/hemis_150.stl'
+        self.colorstl_file = '/home/mgs/PycharmProjects/BTL_GS/BTL/ColorRegimg_stl.npy'
+
+        self.savepath_color = '/home/mgs/PycharmProjects/BTL_GS/BTL_Data/color_plane.npy'
+        self.savepath_xyz = '/home/mgs/PycharmProjects/BTL_GS/BTL_Data/xyz_plane.npy'
 
     def GL_NonFlat(self):
 
@@ -241,9 +252,17 @@ class BTL_GL():
         return actor
 
     def TexImg(self):
+
+        # Generate the textured image
         img = cv2.cvtColor(cv2.imread(self.img_path), cv2.COLOR_BGR2RGB)    # Notice: BGR to RGB image
         plt.imshow(img)
         plt.show()
+
+        # The binary classification -- this
+
+        # Divide the region together -- this is im
+
+        # The region -- this is im
 
     def TexPc(self):
         pc = open3d.read_point_cloud(self.pc_path)
@@ -280,12 +299,15 @@ class BTL_GL():
         # Extract the points from the object
         pc = np.zeros((polydata.GetNumberOfPoints(), 3))
         for i in range(polydata.GetNumberOfPoints()):
+            print(i)
             polydata.GetPoint(i, p)
             tem = p[:]
             pc[i, 0] = tem[0]
             pc[i, 1] = tem[1]
             pc[i, 2] = tem[2]
 
+        print("Test")
+        # Get the color vector
         _,  _, pc_color, _, _ = self.GL_NonFlat()
         img = cv2.cvtColor(cv2.imread(self.img_path), cv2.COLOR_BGR2RGB)
         [w, h, d] = img.shape
@@ -294,6 +316,8 @@ class BTL_GL():
         points = pc[:, 0:2]
         values = pc[:, 2]
 
+        print("The shape of points is ", points.shape)
+
         x_min = np.min(pc[:, 0])
         x_max = np.max(pc[:, 0])
         y_min = np.min(pc[:, 1])
@@ -301,12 +325,23 @@ class BTL_GL():
 
         z_max = np.max(pc[:, 2])
 
+        grid_x, grid_y = np.mgrid[x_min: x_max: complex(w - 1), y_min: y_max: complex(h - 1)]
+
+        print("The min value of x is ", x_min)
+        print("The min value of y is ", y_min)
         print("The max value of x is ", x_max)
         print("The max value of y is ", y_max)
 
-        grid_x, grid_y = np.mgrid[x_min: x_max: complex(w - 1), y_min: y_max: complex(h - 1)]
-        grid_z = griddata(points, values, (grid_x, grid_y), method = 'nearest')
+        print("The shape of the values is ", values.shape)
+        print("The shape of the grid_x is ", grid_x.shape)
+        print("The shape of the grid_y is ", grid_y.shape)
 
+        print("The point is ", points)
+        print("The value is ", values)
+
+        grid_z = griddata(np.asarray(points), np.asarray(values), (grid_x, grid_y), method = 'nearest')
+
+        print("Test")
         vec_color = pc_color
         xyz = np.zeros((len(grid_x.flatten()), 3))
         xyz[:, 0] = grid_x.flatten()
@@ -341,67 +376,21 @@ class BTL_GL():
         y_raven = xyz[:, 1]
         z_raven = xyz[:, 2]
         KdTree = cKDTree(np.c_[x_raven, y_raven, z_raven])
-
+        print("Test")
         for i in range(len(pc)):
             print(i)
-
-            # Check the order of the points
-            # Develop the height information for the model
-            # if i < 40000:
-            #     z = 0
-            # else:
-            #     z = obj.GetPoint(i)[-1]
-            # heights.InsertNextValue(z)
-
-            # The color mapping method
-            # print(i)
-            # p_obj = pc[i, :]
-            # dis = np.absolute(xyz - p_obj)
-            # dis_square = np.square(dis)
-            # dis_sum = dis_square.sum(axis = 1)
-            # dis_sqrt = np.sqrt(dis_sum)
-            # idx = np.where(dis_sqrt == dis_sqrt.min())
-            # idx_color = np.array(idx[0])
-            # vec_color = pc_color[idx_color[0], :]
-            # print(vec_color)
-
             p_obj = pc[i, :]
             dd, ii = KdTree.query([p_obj], k=1)
-            # print(ii)
             idx_color = np.array(ii[0])
-            # print(idx_color)
             vec_color = pc_color[idx_color, :]
 
             # Assign the color vector with the color index
             COLOR[i, :] = vec_color
 
-        # Add this array to the point data as a scalar.
-        # obj.GetPointData().SetScalars(heights)
-        #
-        # # Visualization stuff ... you need to tell the mapper about the scalar field
-        # # and the lookup table. The rest of this is pretty standard stuff.
-        # mapper = vtk.vtkPolyDataMapper()
-        # mapper.SetInputDataObject(obj)
-        # mapper.SetScalarRange(min_z, max_z)
-        # mapper.SetLookupTable(lut)
-        #
-        # actor = vtk.vtkActor()
-        # actor.SetMapper(mapper)
-        #
-        # renderer = vtk.vtkRenderer()
-        # renderer.AddActor(actor)
-        # renderer.SetBackground(.1, .2, .4)
-        #
-        # renw = vtk.vtkRenderWindow()
-        # renw.AddRenderer(renderer)
-        #
-        # iren = vtk.vtkRenderWindowInteractor()
-        # iren.SetRenderWindow(renw)
-        #
-        # renw.Render()
-        # iren.Start()
-
-        np.save('TestStl.npy', COLOR)
+        # Save the object
+        np.save(self.savepath_color, COLOR)
+        np.save(self.savepath_xyz, xyz)
+        # return xyz
 
     def ShowColorSTL(self):
 
@@ -427,11 +416,11 @@ class BTL_GL():
         Colors.SetNumberOfComponents(3)
         Colors.SetName("Colors")
 
-        COLOR = np.load('/home/mgs/PycharmProjects/BTL_GS/BTL/TestStl.npy')
-        # print(COLOR.shape)
+        # Load the color stl file (N x 3 vector)
+        COLOR = np.load(self.colorstl_file)
 
         for i in range(obj.GetNumberOfPoints()):
-            z = obj.GetPoint(i)[-1]
+            # z = obj.GetPoint(i)[-1]
             Colors.InsertNextTuple3(COLOR[i, 0], COLOR[i, 1], COLOR[i, 2])
 
         obj.GetPointData().SetScalars(Colors)
@@ -457,11 +446,180 @@ class BTL_GL():
         renw.Render()
         iren.Start()
 
-        return actor
+        return actor, obj
+
+    def RealtimeVideo(self):
+
+        # Load the stl numpy data
+        brain_color_npy = np.load('/home/mgs/PycharmProjects/BTL_GS/BTL/Colornpy_stl.npy')
+        print("The brain color numpy is ", brain_color_npy)
+        brain_gray_up = np.load('/home/mgs/PycharmProjects/BTL_GS/BTL/Graynpy_stl.npy')
+
+        # Design the scene within the object
+        # Define the transform system
+        transform = vtk.vtkTransform()
+        transform.Translate(0.0, 0.0, 0.0)
+        axes = vtk.vtkAxesActor()
+        axes.SetUserTransform(transform)
+        # Set the camera
+        camera_1 = vtk.vtkCamera()
+        camera_1.SetPosition(1, 1, 1)
+        camera_1.SetFocalPoint(0, 0, 0)
+        camera_2 = vtk.vtkCamera()
+        camera_2.SetPosition(1, 1, 1)
+        camera_2.SetFocalPoint(0, 0, 0)
+
+        # Define the stl actor
+        self.colorstl_file = '/home/mgs/PycharmProjects/BTL_GS/BTL/Colorimg_stl.npy'
+        actor_color = self.ShowColorSTL()
+        self.colorstl_file = '/home/mgs/PycharmProjects/BTL_GS/BTL/Grayimg_stl.npy'
+        actor_grey = self.ShowColorSTL()
+
+        # Design the renderer
+        ren_1 = vtk.vtkRenderer()
+        ren_1.SetActiveCamera(camera_1)
+        renWin_1 = vtk.vtkRenderWindow()
+        renWin_1.AddRenderer(ren_1)
+        renWin_1.SetSize(500, 500)
+        renWin_1.SetWindowName("Real in-vivo camera")
+
+        ren_2 = vtk.vtkRenderer()
+        ren_2.SetActiveCamera(camera_2)
+        renWin_2 = vtk.vtkRenderWindow()
+        renWin_2.AddRenderer(ren_2)
+        renWin_2.SetSize(500, 500)
+        renWin_2.SetWindowName("Virtual camera")
+
+        ren_3 = vtk.vtkRenderer()
+        # ren_3.SetActiveCamera(camera_2)
+        renWin_3 = vtk.vtkRenderWindow()
+        renWin_3.AddRenderer(ren_3)
+        renWin_3.SetSize(500, 500)
+        renWin_3.SetWindowName("The whole scene")
+
+        # Add the actors and renders
+        # ren_1.AddActor(axes)
+        ren_1.AddActor(actor_color)
+        # ren_2.AddActor(axes)
+        ren_2.AddActor(actor_grey)
+
+        ren_3.AddActor(actor_color)
+
+        # The position of the camera relative to the focal point
+        campos = np.zeros(3)
+        delta = 0
+        count = 0
+
+        viz_tool = BTL_VIZ.VtkSimulateScan()
+        xv, yv = viz_tool.ScanPath()
+        print("The xv is ", xv)
+        print("The yv is ", yv)
+
+        while (True):
+
+            count += 1
+            print(count)
+            delta += 0.05
+
+            # Read the index in the scan path
+            x_center = xv[count]
+            y_center = yv[count]
+            print("The x_center is ", x_center)
+            print("The y center is ", y_center)
+            vtk_spot, npy_spot = viz_tool.PointUpdate(brain_color_npy, x_center, y_center)
+            print("The npy_spot is ", npy_spot)
+            actor_spot = ActorNpyColor(npy_spot, vec_color=[255, 0, 0])
+
+            # Convert the points to the visible spot -- a spherical ball model
+            sphereSource = vtk.vtkSphereSource()
+            sphereSource.SetCenter(np.mean(npy_spot[:, 0]), np.mean(npy_spot[:, 1]), np.mean(npy_spot[:, 2]))
+            sphereSource.SetRadius(0.2)
+            sphereSource.Update()
+            mapper = vtk.vtk.vtkPolyDataMapper()
+            mapper.SetInputConnection(sphereSource.GetOutputPort())
+            actor_ball = vtk.vtkActor()
+            actor_ball.SetMapper(mapper)
+            actor_ball.GetProperty().SetColor(1, 0, 0)  # (R,G,B)
+
+            # Update the actor and camera
+            campos[0] = np.mean(npy_spot[:, 0])
+            campos[1] = np.mean(npy_spot[:, 1])
+            campos[2] = np.mean(npy_spot[:, 2])
+
+            print("The current camera position is ", campos)
+
+            camera_1.SetPosition(campos[0], campos[1], campos[2] * 2)
+            camera_1.SetFocalPoint(campos[0], campos[1], campos[2] * 1)
+            camera_2.SetPosition(campos[0], campos[1], campos[2] * 2)
+            camera_2.SetFocalPoint(campos[0], campos[1], campos[2] * 1)
+
+            ren_1.SetActiveCamera(camera_1)
+            ren_1.AddActor(actor_spot)
+            ren_1.AddActor(actor_ball)
+            renWin_1.Render()
+            time.sleep(0.1)
+            renWin_1.Render()
+
+            ren_2.SetActiveCamera(camera_2)
+            ren_2.AddActor(actor_spot)
+            ren_2.AddActor(actor_ball)
+            renWin_2.Render()
+            time.sleep(0.1)
+            renWin_2.Render()
+
+            # ren_2.SetActiveCamera(camera_2)
+            # ren_2.AddActor(actor_spot)
+            # ren_2.AddActor(actor_ball)
+            renWin_3.Render()
+            time.sleep(0.1)
+            renWin_3.Render()
+
+    def ColorTextureMap(self, img_path, stl_path):
+
+        '''
+        1. solve from scratch
+        2. obtain the points and color scalar and generate a new polydata object
+        '''
+
+        texture = vtki.load_texture(img_path)
+        obj = vtki.read(stl_path)
+        obj.texture_map_to_plane(inplace=True)
+        obj.plot(texture = texture)
+
+        # Mapper = vtk.vtkPolyDataMapper()
+        # Mapper.SetInputData(obj)
+        # Actor = vtk.vtkActor()
+        # Actor.SetMapper(Mapper)
+        #
+        # renderer = vtk.vtkRenderer()
+        # renderer.AddActor(Actor)
+        # renWin = vtk.vtkRenderWindow()
+        # renWin.AddRenderer(renderer)
+        #
+        # iren = vtk.vtkRenderWindowInteractor()
+        # iren.SetRenderWindow(renWin)
+        #
+        # renWin.Render()
+        # iren.Start()
+
+        return obj
+
+    def CamModel(self):
+
+        # Define the camera model
+        a = 1
 
 if __name__ == "__main__":
 
     test = BTL_GL()
+    # test.img_path = '/home/mgs/PycharmProjects/BTL_GS/BTL_Data/lena.jpg'
+    # test.pc_path = '/home/mgs/PycharmProjects/BTL_GS/BTL_Data/others/brain.ply'
+    # test.stl_path = '/home/mgs/PycharmProjects/BTL_GS/BTL_Data/plane_stl_200.stl'
+    # test.colorstl_file = '/home/mgs/PycharmProjects/BTL_GS/BTL_Data/color_plane.npy'
+    # test.savepath_color = '/home/mgs/PycharmProjects/BTL_GS/BTL_Data/color_hemis.npy'
+    # test.savepath_xyz = '/home/mgs/PycharmProjects/BTL_GS/BTL_Data/xyz_hemis.npy'
+
+    # test.RealtimeVideo()
     # test.TexPc()
     # test.GL_Cam()
     # test.GL_HemisModel()
@@ -469,5 +627,9 @@ if __name__ == "__main__":
     # test.GL_Flat()
     # test.TexImg()
     # test.TexPc()
-    test.ShowColorSTL()
     # test.Color2STL()
+    # test.ShowColorSTL()
+
+    img_path = '/home/mgs/PycharmProjects/BTL_GS/BTL_Data/brain_mask_color.jpg'
+    stl_path = '/home/mgs/PycharmProjects/BTL_GS/BTL_Data/plane_stl_200.stl'
+    test.ColorTextureMap(img_path, stl_path)
